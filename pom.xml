@@ -14,6 +14,7 @@
     <spark.version>1.3.1</spark.version>
     <log4j.version>1.2.17</log4j.version>
     <esri.geometry.version>1.2.1</esri.geometry.version>
+    <org.scalatest.version>2.2.4</org.scalatest.version>
 	</properties>
 
 	<dependencies>
@@ -53,6 +54,12 @@
 	    <version>${esri.geometry.version}</version>
 			<scope>compile</scope>
     </dependency>
+    <dependency>
+      <groupId>org.scalatest</groupId>
+      <artifactId>scalatest_2.10</artifactId>
+      <version>${org.scalatest.version}</version>
+      <scope>test</scope>
+    </dependency>    
 	</dependencies>
 	<build>
 		<plugins>
