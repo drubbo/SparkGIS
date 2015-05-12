@@ -1,5 +1,7 @@
 package org.betterers.spark.gis.types
 
+import java.io.CharArrayWriter
+
 import com.esri.core.geometry._
 import com.esri.core.geometry.ogc.OGCGeometry
 import org.apache.spark.sql.types._
@@ -55,13 +57,13 @@ class GeometryType extends UserDefinedType[GeometryType] {
         rt
       }
       points.size match {
-        case 0 => throw new IllegalArgumentException("Invalid number of points (0)")
+        case 0 => throw new IllegalArgumentException("Invalid number of points: 0")
         case 1 => mkPoint(0)
         case 2 => new Polyline(mkPoint(0), mkPoint(1))
         case n =>
           val poly = new Polyline(mkPoint(0), mkPoint(1))
           var i = 2
-          while (i < points.size) {
+          while (i < n) {
             poly.addSegment(mkLine(i - 1, i), false)
             i += 1
           }
@@ -107,7 +109,7 @@ class GeometryType extends UserDefinedType[GeometryType] {
       case g: GeometryType =>
         g.toGeoJson
       case x =>
-        throw new IllegalArgumentException("Invalid Geometry value: " + x)
+        throw new IllegalArgumentException("Invalid GeometryType value to serialize: " + x)
     }
   }
 
@@ -118,14 +120,36 @@ class GeometryType extends UserDefinedType[GeometryType] {
    */
   override def deserialize(datum: Any): GeometryType = {
     datum match {
-      case null => null
       case g: GeometryType => g
       case s: String => GeometryType.fromGeoJson(s)
       case r: Map[_, _] =>
-        val json = new JSONObject(r.asInstanceOf[Map[String, Any]]).toString()
+        val writer = new CharArrayWriter()
+        val gen = new JsonFactory().createJsonGenerator(writer)
+
+        def writeJson: Any => Unit = {
+          case m: Map[_, _] =>
+            gen.writeStartObject()
+            m.foreach { kv =>
+              gen.writeFieldName(kv._1.toString)
+              writeJson(kv._2)
+            }
+            gen.writeEndObject()
+          case a: Seq[_] =>
+            gen.writeStartArray()
+            a.foreach(writeJson)
+            gen.writeEndArray()
+          case x =>
+            gen.writeObject(x)
+        }
+
+        writeJson(r)
+        gen.flush()
+        val json = writer.toString
+        gen.close()
+        println(">>>>>>>>>" + json)
         GeometryType.fromGeoJson(json)
-      case _ =>
-        throw new IllegalArgumentException("Invalid serialization for Geometry")
+      case x =>
+        throw new IllegalArgumentException("Can't deserialize to GeometryType: " + x)
     }
   }
 }

@@ -3,7 +3,6 @@ package org.betterers.spark.gis.types
 import org.apache.spark.sql.test.TestSQLContext._
 import org.apache.spark.sql.types.{IntegerType, StructField, StructType}
 import org.apache.spark.sql.{Row, SQLContext}
-import org.betteres.spark.gis.types.GeometryType
 import org.scalatest.FunSuite
 
 /**
