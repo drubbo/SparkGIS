@@ -7,8 +7,6 @@ import com.esri.core.geometry.ogc.OGCGeometry
 import org.apache.spark.sql.types._
 import org.codehaus.jackson.JsonFactory
 
-import scala.util.parsing.json.JSONObject
-
 /**
  * User defined type wrapping an ESRI [[Geometry]]
  *
@@ -146,7 +144,7 @@ class GeometryType extends UserDefinedType[GeometryType] {
         gen.flush()
         val json = writer.toString
         gen.close()
-        println(">>>>>>>>>" + json)
+
         GeometryType.fromGeoJson(json)
       case x =>
         throw new IllegalArgumentException("Can't deserialize to GeometryType: " + x)
@@ -171,8 +169,8 @@ object GeometryType {
   def fromJson(json: String): GeometryType = {
     val jsonParser = new JsonFactory().createJsonParser(json)
     jsonParser.nextToken()
-    val geom = GeometryEngine.jsonToGeometry(jsonParser).getGeometry
-    new GeometryType(geom)
+    val geom = GeometryEngine.jsonToGeometry(jsonParser)
+    new GeometryType(geom.getSpatialReference, geom.getGeometry)
   }
 
   /**
@@ -184,8 +182,8 @@ object GeometryType {
     val op = OperatorFactoryLocal.getInstance.
       getOperator(Operator.Type.ImportFromGeoJson).
       asInstanceOf[OperatorImportFromGeoJson]
-    val geom = op.execute(0, Geometry.Type.Unknown, geoJson, null).getGeometry
+    val geom = op.execute(0, Geometry.Type.Unknown, geoJson, null)
 
-    new GeometryType(geom)
+    new GeometryType(geom.getSpatialReference, geom.getGeometry)
   }
 }
