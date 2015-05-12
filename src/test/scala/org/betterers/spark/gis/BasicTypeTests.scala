@@ -31,13 +31,13 @@ class BasicTypeTests extends FunSuite {
   }
 
   test("Factory methods") {
-    val point = GeometryValue.point((1.0,1.0))
+    val point = GeometryValue.point((1.0, 1.0))
     assert(point.toGeoJson == "{\"type\":\"Point\",\"coordinates\":[1.0,1.0]}")
 
     val line = GeometryValue.line((1.0, 1.0), (2.0, 2.0), (3.0, 3.0), (4.0, 4.0))
     assert(line.toGeoJson == "{\"type\":\"LineString\",\"coordinates\":[[1.0,1.0],[2.0,2.0],[3.0,3.0],[4.0,4.0]]}")
 
-    val multiLine = GeometryValue.multiLine(Seq((1.0, 2.0),(2.0, 3.0)), Seq((10.0,20.0),(20.0,30.0)))
+    val multiLine = GeometryValue.multiLine(Seq((1.0, 2.0), (2.0, 3.0)), Seq((10.0, 20.0), (20.0, 30.0)))
     assert(multiLine.toGeoJson == "{\"type\":\"MultiLineString\",\"coordinates\":[[[1.0,2.0],[2.0,3.0]],[[10.0,20.0],[20.0,30.0]]]}")
 
     val polygon = GeometryValue.polygon((1.0, 1.0), (2.0, 2.0), (3.0, 3.0))
@@ -57,8 +57,8 @@ class BasicTypeTests extends FunSuite {
     )
     assert(data.mkString(",") ==
       "[1,{\"type\":\"Point\",\"coordinates\":[1.0,1.0]}]," +
-      "[2,{\"type\":\"LineString\",\"coordinates\":[[12.0,13.0],[15.0,20.0]]}]," +
-      "[3,{\"type\":\"MultiLineString\",\"coordinates\":[[[12.0,13.0],[15.0,20.0]],[[7.0,9.0],[11.0,17.0]]]}]");
+        "[2,{\"type\":\"LineString\",\"coordinates\":[[12.0,13.0],[15.0,20.0]]}]," +
+        "[3,{\"type\":\"MultiLineString\",\"coordinates\":[[[12.0,13.0],[15.0,20.0]],[[7.0,9.0],[11.0,17.0]]]}]");
   }
 
   test("Load JSON RDD with explicit schema") {

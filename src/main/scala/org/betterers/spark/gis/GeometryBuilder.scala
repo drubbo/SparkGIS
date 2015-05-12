@@ -7,7 +7,6 @@ import com.esri.core.geometry._
  *
  * @author drubbo <ubik@gamezoo.it>
  */
-
 object GeometryBuilder {
 
   /**

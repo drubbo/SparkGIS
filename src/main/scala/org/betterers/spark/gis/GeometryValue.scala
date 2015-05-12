@@ -12,12 +12,6 @@ import org.codehaus.jackson.JsonFactory
  */
 @SQLUserDefinedType(udt = classOf[GeometryType])
 class GeometryValue(val srid: Int, val geom: Geometry) extends Serializable {
-
-  /**
-   * @return [[OGCGeometry]] from the enclosed [[Geometry]]
-   */
-  //private def ogc = OGCGeometry.createFromEsriGeometry(value, srid)
-
   /**
    * Builds a [[GeometryValue]] from an ESRI [[Geometry]] with default SRID
    * @param geom
@@ -57,6 +51,16 @@ class GeometryValue(val srid: Int, val geom: Geometry) extends Serializable {
   }
 
   /**
+   * @return Type of enclosed [[Geometry]]
+   */
+  def geometryType: Geometry.Type = geom.getType
+
+  /**
+   * @return [[OGCGeometry]] from the enclosed [[Geometry]]
+   */
+  def ogc = OGCGeometry.createFromEsriGeometry(geom, SpatialReference.create(srid))
+
+  /**
    * @return JSON representation of the enclosed [[Geometry]]
    */
   def toJson =
@@ -89,9 +93,8 @@ object GeometryValue {
   private val WGS84 = 4326
 
   /**
-   * Build a [[GeometryValue]] from a json string
    * @param json
-   * @return
+   * @return A [[GeometryValue]] built from a json string
    */
   def fromJson(json: String): GeometryValue = {
     val jsonParser = new JsonFactory().createJsonParser(json)
@@ -101,9 +104,8 @@ object GeometryValue {
   }
 
   /**
-   * Build a [[GeometryValue]] from a geoJson string
    * @param geoJson
-   * @return
+   * @return A [[GeometryValue]] built from a geoJson string
    */
   def fromGeoJson(geoJson: String): GeometryValue = {
     val op = OperatorFactoryLocal.getInstance.
@@ -114,18 +116,38 @@ object GeometryValue {
     new GeometryValue(geom.getSpatialReference.getID, geom.getGeometry)
   }
 
+  /**
+   * @param xy
+   * @return A [[GeometryValue]] enclosing a [[Point]]
+   */
   def point(xy: (Double, Double)) =
     new GeometryValue(GeometryBuilder.mkPoint(xy))
 
+  /**
+   * @param points
+   * @return A [[GeometryValue]] enclosing a [[Polyline]] with a single path
+   */
   def line(points: (Double, Double)*) =
     new GeometryValue(GeometryBuilder.mkLine(points))
 
+  /**
+   * @param lines
+   * @return A [[GeometryValue]] enclosing a [[Polyline]] with multiple paths
+   */
   def multiLine(lines: Seq[(Double, Double)]*) =
     new GeometryValue(GeometryBuilder.mkMultiLine(lines))
 
+  /**
+   * @param points
+   * @return A [[GeometryValue]] enclosing a [[Polygon]] with a single ring
+   */
   def polygon(points: (Double, Double)*) =
     new GeometryValue(GeometryBuilder.mkPolygon(points))
 
+  /**
+   * @param lines
+   * @return A [[GeometryValue]] enclosing a [[Polygon]] with multiple rings
+   */
   def multiPolygon(lines: Seq[(Double, Double)]*) =
     new GeometryValue(GeometryBuilder.mkMultiPolygon(lines))
 }
