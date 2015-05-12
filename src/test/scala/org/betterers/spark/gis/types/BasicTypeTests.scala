@@ -2,11 +2,12 @@ package scala.org.betterers.spark.gis.types
 
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.test.TestSQLContext._
+import org.apache.spark.sql.types.{IntegerType, StructField, StructType}
 import org.apache.spark.sql.{Row, SQLContext}
 import org.apache.spark.{SparkConf, SparkContext}
 import org.scalatest.FunSuite
 
-import org.betteres.spark.gis.types.Point
+import org.betteres.spark.gis.types.Geometry
 
 /**
  * Basic tests for GIS UDTs
@@ -14,17 +15,17 @@ import org.betteres.spark.gis.types.Point
 class BasicTypeTests extends FunSuite{
   val sqlContext = new SQLContext(sparkContext)
 
-  test("Point: create RDD from runtime objects") {
-    val points: Seq[Point] = Seq (new Point(1, 1), new Point(2, 1))
+  test("How are they serialized") {
+    val schema = StructType(Seq(StructField("id", IntegerType), StructField("geo", Geometry.Type)))
+    val rdd = sparkContext.parallelize(Seq(
+      Row(1, "{\"type\":\"Point\",\"coordinates\":[1,1]}}"),
+      Row(2, "{\"type\":\"Point\",\"coordinates\":[12,13]}}")
+    ))
+    val schemaRDD = sqlContext.createDataFrame(rdd, schema)
+    schemaRDD.foreach(println)
   }
 
   test("Point types from GeoJSON") {
-    val points: Seq[Point] = Seq (new Point(1, 1), new Point(2, 1))
-
-    val pointsRDD = sparkContext.parallelize( Seq(
-      """{"x":1,"y":1,"spatialReference":{"wkid":4326}}""",
-      """{"x":2,"y":2,"spatialReference":{"wkid":4326}}"""))
-    val selectedRDD = sqlContext.jsonRDD(pointsRDD)
   }
 }
 

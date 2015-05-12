@@ -20,5 +20,5 @@ package org.betterers.spark
 /**
  * TODO
  */
-package object gis
+package object gis { }
 
