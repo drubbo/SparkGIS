@@ -22,28 +22,42 @@ class BasicTypeTests extends FunSuite {
 
   test("Factory methods") {
     val point = Geometry.point((1.0, 1.0))
-    assert(point.toString == "POINT (1 1)")
+    assertResult("POINT (1 1)") {
+      point.toString
+    }
 
     val multiPoint = Geometry.multiPoint((1.0, 1.0), (2.0, 2.0))
-    assert(multiPoint.toString == "MULTIPOINT ((1 1), (2 2))")
+    assertResult("MULTIPOINT ((1 1), (2 2))") {
+      multiPoint.toString
+    }
 
     val line = Geometry.line((1.0, 1.0), (2.0, 2.0), (3.0, 3.0), (4.0, 4.0))
-    assert(line.toString == "LINESTRING (1 1, 2 2, 3 3, 4 4)")
+    assertResult("LINESTRING (1 1, 2 2, 3 3, 4 4)") {
+      line.toString
+    }
 
     val multiLine = Geometry.multiLine(Seq((1.0, 2.0), (2.0, 3.0)), Seq((10.0, 20.0), (20.0, 30.0)))
-    assert(multiLine.toString == "MULTILINESTRING ((1 2, 2 3), (10 20, 20 30))")
+    assertResult("MULTILINESTRING ((1 2, 2 3), (10 20, 20 30))") {
+      multiLine.toString
+    }
 
     val polygon = Geometry.polygon((1.0, 1.0), (2.0, 2.0), (3.0, 1.0), (2.0, 0.0))
-    assert(polygon.toString == "POLYGON ((1 1, 2 0, 3 1, 2 2, 1 1))")
+    assertResult("POLYGON ((1 1, 2 0, 3 1, 2 2, 1 1))") {
+      polygon.toString
+    }
 
     val mPoly = Geometry.multiPolygon(
       Seq((1.0, 1.0), (1.0, 2.0), (2.0, 2.0), (2.0, 1.0)),
       Seq((1.25, 1.25), (1.25, 1.75), (1.75, 1.75), (1.75, 1.25))
     )
-    assert(mPoly.toString == "MULTIPOLYGON (((1 1, 2 1, 2 2, 1 2, 1 1)), ((1.25 1.25, 1.75 1.25, 1.75 1.75, 1.25 1.75, 1.25 1.25)))")
+    assertResult("MULTIPOLYGON (((1 1, 2 1, 2 2, 1 2, 1 1)), ((1.25 1.25, 1.75 1.25, 1.75 1.75, 1.25 1.75, 1.25 1.25)))") {
+      mPoly.toString
+    }
 
     val coll = Geometry.aggregate(point, line, polygon)
-    assert(coll.toString == "GEOMETRYCOLLECTION (POINT (1 1), LINESTRING (1 1, 2 2, 3 3, 4 4), POLYGON ((1 1, 2 0, 3 1, 2 2, 1 1)))")
+    assertResult("GEOMETRYCOLLECTION (POINT (1 1), LINESTRING (1 1, 2 2, 3 3, 4 4), POLYGON ((1 1, 2 0, 3 1, 2 2, 1 1)))") {
+      coll.toString
+    }
   }
 
   test("From JSON") {
@@ -54,22 +68,65 @@ class BasicTypeTests extends FunSuite {
     )
     assert(data.mkString(",") ==
       "[1,POINT (1 1)]," +
-      "[2,LINESTRING (12 13, 15 20)]," +
-      "[3,MULTILINESTRING ((12 13, 15 20), (7 9, 11 17))]")
+        "[2,LINESTRING (12 13, 15 20)]," +
+        "[3,MULTILINESTRING ((12 13, 15 20), (7 9, 11 17))]")
   }
 
   test("To JSON") {
     val point = Geometry.point((1.0, 1.0))
-    assert(point.toJson == "{\"x\":1,\"y\":1,\"spatialReference\":{\"wkid\":4326}}")
-    assert(point.toGeoJson == "{\"type\":\"Point\",\"coordinates\":[1.0,1.0]}")
+    assertResult("{\"x\":1,\"y\":1,\"spatialReference\":{\"wkid\":4326}}") {
+      point.toJson
+    }
+    assertResult("{\"type\":\"Point\",\"coordinates\":[1.0,1.0]}") {
+      point.toGeoJson
+    }
 
     val line = Geometry.line((1.0, 1.0), (2.0, 2.0))
-    assert(line.toJson == "{\"paths\":[[[1,1],[2,2]]],\"spatialReference\":{\"wkid\":4326}}")
-    assert(line.toGeoJson == "{\"type\":\"LineString\",\"coordinates\":[[1.0,1.0],[2.0,2.0]]}")
+    assertResult("{\"paths\":[[[1,1],[2,2]]],\"spatialReference\":{\"wkid\":4326}}") {
+      line.toJson
+    }
+    assertResult("{\"type\":\"LineString\",\"coordinates\":[[1.0,1.0],[2.0,2.0]]}") {
+      line.toGeoJson
+    }
 
     val polygon = Geometry.polygon((1.0, 1.0), (2.0, 2.0), (3.0, 1.0), (2.0, 0.0))
-    assert(polygon.toJson == "{\"rings\":[[[1,1],[2,2],[3,1],[2,0],[1,1]]],\"spatialReference\":{\"wkid\":4326}}")
-    assert(polygon.toGeoJson == "{\"type\":\"Polygon\",\"coordinates\":[[[1.0,1.0],[2.0,2.0],[3.0,1.0],[2.0,0.0],[1.0,1.0]]]}")
+    assertResult("{\"rings\":[[[1,1],[2,2],[3,1],[2,0],[1,1]]],\"spatialReference\":{\"wkid\":4326}}") {
+      polygon.toJson
+    }
+    assertResult("{\"type\":\"Polygon\",\"coordinates\":[[[1.0,1.0],[2.0,2.0],[3.0,1.0],[2.0,0.0],[1.0,1.0]]]}") {
+      polygon.toGeoJson
+    }
+
+    val mPoly = Geometry.multiPolygon(
+      Seq((1.0, 1.0), (1.0, 2.0), (2.0, 2.0), (2.0, 1.0)),
+      Seq((1.25, 1.25), (1.25, 1.75), (1.75, 1.75), (1.75, 1.25))
+    )
+    assertResult("{\"rings\":[[[1,1],[1,2],[2,2],[2,1],[1,1]],[[1.25,1.25],[1.25,1.75],[1.75,1.75],[1.75,1.25],[1.25,1.25]]],\"spatialReference\":{\"wkid\":4326}}") {
+      mPoly.toJson
+    }
+    assertResult("{\"type\":\"MultiPolygon\",\"coordinates\":[[[[1.0,1.0],[1.0,2.0],[2.0,2.0],[2.0,1.0],[1.0,1.0]]],[[[1.25,1.25],[1.25,1.75],[1.75,1.75],[1.75,1.25],[1.25,1.25]]]]}") {
+      mPoly.toGeoJson
+    }
+
+    // TODO this is something buggy in the library. There seem to be no tests for this.
+    /* This is how a geometry collection should appear
+      { "type": "GeometryCollection",
+          "geometries": [
+            { "type": "Point",
+              "coordinates": [100.0, 0.0]
+              },
+            { "type": "LineString",
+              "coordinates": [ [101.0, 0.0], [102.0, 1.0] ]
+              }
+          ]
+        }
+     */
+    val coll = Geometry.aggregate(point, line, polygon)
+    intercept[UnsupportedOperationException] {
+      // NOTE not sure what this sould return
+      coll.toJson
+    }
+    println(coll.toGeoJson)
   }
 
   test("Deserialize") {
@@ -98,7 +155,6 @@ class BasicTypeTests extends FunSuite {
     val rdd = sparkContext.parallelize(data)
     val df = sqlContext.createDataFrame(rdd, schema)
     assert(df.collect().mkString(",") == "[1,POINT (1 1)],[2,LINESTRING (12 13, 15 20)]")
-
   }
 }
 
