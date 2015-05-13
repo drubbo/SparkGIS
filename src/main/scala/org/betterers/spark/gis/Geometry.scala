@@ -1,5 +1,7 @@
 package org.betterers.spark.gis
 
+import java.nio.ByteBuffer
+
 import com.esri.core.geometry._
 import com.esri.core.geometry.ogc.{OGCConcreteGeometryCollection, OGCGeometry, OGCPoint}
 import org.apache.log4j.Logger
@@ -13,7 +15,7 @@ import scala.collection.JavaConversions
  * @author Ubik <emiliano.leporati@gmail.com>
  */
 @SQLUserDefinedType(udt = classOf[GeometryType])
-class Geometry(val srid: Int, val geom: Seq[ESRIGeometry]) extends Serializable {
+class Geometry(val srid: Int, private[gis] val geometries: Seq[ESRIGeometry]) extends Serializable {
 
   /**
    * Builds a [[Geometry]] from an [[ESRIGeometry]]
@@ -39,9 +41,9 @@ class Geometry(val srid: Int, val geom: Seq[ESRIGeometry]) extends Serializable 
   private[gis]
   lazy val ogc: OGCGeometry = {
     val sr = SpatialReference.create(srid)
-    if (geom.isEmpty) new OGCPoint(new Point(), sr)
+    if (geometries.isEmpty) new OGCPoint(new Point(), sr)
     else {
-      val cursor = new SimpleGeometryCursor(geom.toArray)
+      val cursor = new SimpleGeometryCursor(geometries.toArray)
       OGCGeometry.createFromEsriCursor(cursor, sr)
     }
   }
@@ -51,7 +53,7 @@ class Geometry(val srid: Int, val geom: Seq[ESRIGeometry]) extends Serializable 
    */
   @transient
   private lazy val geomPoints: Seq[Seq[Point]] =
-    geom.map(Utils.getPoints)
+    geometries.map(Utils.getPoints)
 
   /**
    * Collection of every point in every enclosed geometry
@@ -72,13 +74,19 @@ class Geometry(val srid: Int, val geom: Seq[ESRIGeometry]) extends Serializable 
       val y = Utils.avgCoordinate(_.getY, points)
       new Point(x, y)
     }
-    // centroid weighted by length / area
-    def pathCentroid[T <: MultiPath](geom: T, pathIndex: Int, weight: (Int => Double)): Point = {
-      val points = Seq.range(geom.getPathStart(pathIndex), geom.getPathEnd(pathIndex)).map(geom.getPoint)
-      val w = weight(pathIndex)
-      val x = Utils.avgCoordinate(_.getX, points) * w
-      val y = Utils.avgCoordinate(_.getY, points) * w
+    // average point of a weighted sequence
+    def weightedCentroid(points: Seq[(Point, Double)]): Point = {
+      val pw = points.unzip
+      val x = Utils.avgWeightCoordinate(_.getX, pw)
+      val y = Utils.avgWeightCoordinate(_.getY, pw)
       new Point(x, y)
+    }
+    // centroid weighted by length / area
+    def pathCentroid[T <: MultiPath](geom: T, pathIndex: Int, weight: Double): (Point, Double) = {
+      val points = Seq.range(geom.getPathStart(pathIndex), geom.getPathEnd(pathIndex)).map(geom.getPoint)
+      val x = Utils.avgCoordinate(_.getX, points) * weight
+      val y = Utils.avgCoordinate(_.getY, points) * weight
+      (new Point(x, y), weight)
     }
     // centroid of a single shape
     def singleCentroid: ESRIGeometry => Point = {
@@ -87,16 +95,16 @@ class Geometry(val srid: Int, val geom: Seq[ESRIGeometry]) extends Serializable 
       case (_: Segment | _: MultiPoint) =>
         centroid(geomPoints.head)
       case g: Polyline =>
-        centroid(Seq.range(0, g.getPathCount).map(p => {
-          pathCentroid(g, p, g.calculatePathLength2D)
+        weightedCentroid(Seq.range(0, g.getPathCount).map(p => {
+          pathCentroid(g, p, g.calculatePathLength2D(p))
         }))
       case g: Polygon =>
-        centroid(Seq.range(0, g.getPathCount).map(p => {
-          pathCentroid(g, p, g.calculateRingArea2D)
+        weightedCentroid(Seq.range(0, g.getPathCount).map(p => {
+          pathCentroid(g, p, g.calculateRingArea2D(p))
         }))
     }
 
-    geom match {
+    geometries match {
       case g +: Nil => Some(singleCentroid(g))
       case _ => None
     }
@@ -105,7 +113,7 @@ class Geometry(val srid: Int, val geom: Seq[ESRIGeometry]) extends Serializable 
   /**
    * @return Number of rings if enclosed [[ESRIGeometry]] is a [[Polygon]]
    */
-  def numberOfRings: Option[Int] = geom match {
+  def numberOfRings: Option[Int] = geometries match {
     case (p: Polygon) +: Nil => Some(p.getPathCount)
     case _ => None
   }
@@ -114,10 +122,10 @@ class Geometry(val srid: Int, val geom: Seq[ESRIGeometry]) extends Serializable 
    * @return Number of sub-geometries
    */
   def numberOfGeometries =
-    geom match {
+    geometries match {
       case (_: Point | _: Segment) +: Nil => 1
       case (m: MultiVertexGeometry) +: Nil => m.getPointCount
-      case _ => geom.size
+      case _ => geometries.size
     }
 
   /**
@@ -153,7 +161,7 @@ class Geometry(val srid: Int, val geom: Seq[ESRIGeometry]) extends Serializable 
         val opponent = coord(x)
         if (pred(opponent, candidate)) opponent else candidate
     }
-    if (geom.isEmpty) None else Some(eval(allPoints))
+    if (geometries.isEmpty) None else Some(eval(allPoints))
   }
 
   /**
@@ -167,6 +175,12 @@ class Geometry(val srid: Int, val geom: Seq[ESRIGeometry]) extends Serializable 
    */
   def toGeoJson: String =
     ogc.asGeoJson
+
+  /**
+   * @return WKB representation of the enclosed [[ESRIGeometry]]
+   */
+  def toBinary: Array[Byte] =
+    ogc.asBinary.array
 
   /**
    * @return WKT representation of the enclosed [[ESRIGeometry]]
@@ -221,6 +235,20 @@ object Geometry {
    */
   def fromGeoJson(geoJson: String): Geometry =
     apply(OGCGeometry.fromGeoJson(geoJson))
+
+  /**
+   * @param wkb
+   * @return A [[Geometry]] built from a WKB
+   */
+  def fromBinary(wkb: ByteBuffer): Geometry =
+    apply(OGCGeometry.fromBinary(wkb))
+
+  /**
+   * @param wkb
+   * @return A [[Geometry]] built from a WKB
+   */
+  def fromBinary(wkb: Array[Byte]): Geometry =
+    fromBinary(ByteBuffer.wrap(wkb))
 
   /**
    * @param wkt
@@ -343,7 +371,7 @@ object Geometry {
    * @return A [[Geometry]] enclosing a geometry collection
    */
   def aggregate(srid: Int, geometries: Geometry*): Geometry = {
-    val geoms = geometries.flatMap(_.geom)
+    val geoms = geometries.flatMap(_.geometries)
     collection(srid, geoms: _*)
   }
 
