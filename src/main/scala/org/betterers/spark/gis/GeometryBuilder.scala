@@ -18,6 +18,15 @@ object GeometryBuilder {
   }
 
   /**
+   * Creates a [[MultiPoint]] from a sequence of coordinate pairs
+   * @param points
+   * @return
+   */
+  def mkMultiPoint(points: Seq[(Double, Double)]): MultiPoint = {
+    points.map(mkPoint).foldLeft(new MultiPoint())(addPoint)
+  }
+
+  /**
    * Creates a [[Polyline]] with a single path from a sequence of coordinate pairs
    * @return
    */
@@ -56,6 +65,17 @@ object GeometryBuilder {
     val rt = addLines(new Polygon(), lines)
     rt.closeAllPaths()
     rt
+  }
+
+  /**
+   * Adds a [[Point]] to a [[MultiPoint]]
+   * @param target
+   * @param toAdd
+   * @return the target [[MultiPoint]]
+   */
+  private def addPoint(target: MultiPoint, toAdd: Point): MultiPoint = {
+    target.add(toAdd)
+    target
   }
 
   /**

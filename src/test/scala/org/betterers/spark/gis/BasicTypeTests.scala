@@ -20,16 +20,6 @@ class BasicTypeTests extends FunSuite {
     (3, "{\"type\":\"MultiLineString\",\"coordinates\":[[[12,13],[15,20]],[[7,9],[11,17]]]}}")
   )
 
-  test("To JSON") {
-    val point = new GeometryValue((1.0, 1.0))
-    assert(point.toJson == "{\"x\":1,\"y\":1,\"spatialReference\":{\"wkid\":4326}}")
-    assert(point.toGeoJson == "{\"type\":\"Point\",\"coordinates\":[1.0,1.0]}")
-
-    val line = new GeometryValue((1.0, 1.0), (2.0, 2.0))
-    assert(line.toJson == "{\"paths\":[[[1,1],[2,2]]],\"spatialReference\":{\"wkid\":4326}}")
-    assert(line.toGeoJson == "{\"type\":\"LineString\",\"coordinates\":[[1.0,1.0],[2.0,2.0]]}")
-  }
-
   test("Factory methods") {
     val point = GeometryValue.point((1.0, 1.0))
     assert(point.toGeoJson == "{\"type\":\"Point\",\"coordinates\":[1.0,1.0]}")
@@ -58,7 +48,17 @@ class BasicTypeTests extends FunSuite {
     assert(data.mkString(",") ==
       "[1,{\"type\":\"Point\",\"coordinates\":[1.0,1.0]}]," +
         "[2,{\"type\":\"LineString\",\"coordinates\":[[12.0,13.0],[15.0,20.0]]}]," +
-        "[3,{\"type\":\"MultiLineString\",\"coordinates\":[[[12.0,13.0],[15.0,20.0]],[[7.0,9.0],[11.0,17.0]]]}]");
+        "[3,{\"type\":\"MultiLineString\",\"coordinates\":[[[12.0,13.0],[15.0,20.0]],[[7.0,9.0],[11.0,17.0]]]}]")
+  }
+
+  test("To JSON") {
+    val point = GeometryValue.point((1.0, 1.0))
+    assert(point.toJson == "{\"x\":1,\"y\":1,\"spatialReference\":{\"wkid\":4326}}")
+    assert(point.toGeoJson == "{\"type\":\"Point\",\"coordinates\":[1.0,1.0]}")
+
+    val line = GeometryValue.line((1.0, 1.0), (2.0, 2.0))
+    assert(line.toJson == "{\"paths\":[[[1,1],[2,2]]],\"spatialReference\":{\"wkid\":4326}}")
+    assert(line.toGeoJson == "{\"type\":\"LineString\",\"coordinates\":[[1.0,1.0],[2.0,2.0]]}")
   }
 
   test("Load JSON RDD with explicit schema") {
@@ -67,17 +67,17 @@ class BasicTypeTests extends FunSuite {
       "{\"id\":2,\"geo\":" + jsons(2) + "}"
     ))
     val df = sqlContext.jsonRDD(rdd, schema)
-    assert(df.collect().mkString(",") == "[1,{\"type\":\"Point\",\"coordinates\":[1.0,1.0]}],[2,{\"type\":\"LineString\",\"coordinates\":[[12.0,13.0],[15.0,20.0]]}]");
+    assert(df.collect().mkString(",") == "[1,{\"type\":\"Point\",\"coordinates\":[1.0,1.0]}],[2,{\"type\":\"LineString\",\"coordinates\":[[12.0,13.0],[15.0,20.0]]}]")
   }
 
-  test("In RDDs") {
+  test("Values in RDDs") {
     val data = Seq(
       Row(1, GeometryValue.fromGeoJson(jsons(1))),
       Row(2, GeometryValue.fromGeoJson(jsons(2)))
     )
     val rdd = sparkContext.parallelize(data)
     val df = sqlContext.createDataFrame(rdd, schema)
-    assert(df.collect().mkString(",") == "[1,{\"type\":\"Point\",\"coordinates\":[1.0,1.0]}],[2,{\"type\":\"LineString\",\"coordinates\":[[12.0,13.0],[15.0,20.0]]}]");
+    assert(df.collect().mkString(",") == "[1,{\"type\":\"Point\",\"coordinates\":[1.0,1.0]}],[2,{\"type\":\"LineString\",\"coordinates\":[[12.0,13.0],[15.0,20.0]]}]")
 
   }
 }

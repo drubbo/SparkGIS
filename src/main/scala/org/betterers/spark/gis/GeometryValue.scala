@@ -1,9 +1,12 @@
 package org.betterers.spark.gis
 
 import com.esri.core.geometry._
-import com.esri.core.geometry.ogc.OGCGeometry
+import com.esri.core.geometry.ogc.{OGCConcreteGeometryCollection, OGCMultiPoint, OGCGeometryCollection, OGCGeometry}
+import org.apache.log4j.Logger
 import org.apache.spark.sql.types.SQLUserDefinedType
 import org.codehaus.jackson.JsonFactory
+
+import scala.collection.JavaConversions
 
 /**
  * Class wrapping an ESRI [[Geometry]] representing values of [[GeometryType]]
@@ -11,7 +14,16 @@ import org.codehaus.jackson.JsonFactory
  * @author drubbo <ubik@gamezoo.it>
  */
 @SQLUserDefinedType(udt = classOf[GeometryType])
-class GeometryValue(val srid: Int, val geom: Geometry) extends Serializable {
+class GeometryValue(val srid: Int, val geom: Seq[Geometry]) extends Serializable {
+  /**
+   * Builds a [[GeometryValue]] from an ESRI [[Geometry]]
+   * @param srid
+   * @param geom
+   */
+  def this(srid: Int, geom: Geometry) = {
+    this(srid, Seq(geom))
+  }
+
   /**
    * Builds a [[GeometryValue]] from an ESRI [[Geometry]] with default SRID
    * @param geom
@@ -21,62 +33,122 @@ class GeometryValue(val srid: Int, val geom: Geometry) extends Serializable {
   }
 
   /**
-   * Builds a [[GeometryValue]] of type Point, LineString, or MultiLineString, with an SRID
-   * @param srid
-   * @param points One or a sequence of coordinate pairs
+   * Builds a [[GeometryValue]] from and ESRI [[OGCGeometry]]
+   * @param geom
    */
-  def this(srid: Int, points: (Double, Double)*) = {
-    this(srid, {
-      points match {
-        case (l: Seq[_]) +: Nil =>
-          GeometryBuilder.mkLine(l.asInstanceOf[Seq[(Double, Double)]])
-        case (_: Seq[_]) +: _ =>
-          GeometryBuilder.mkMultiLine(points.asInstanceOf[Seq[Seq[(Double, Double)]]])
-        case p +: Nil =>
-          GeometryBuilder.mkPoint(p)
-        case _ +: _ =>
-          GeometryBuilder.mkLine(points)
-        case _ =>
-          throw new IllegalArgumentException("Invalid points to build a Geometry: " + points)
+  def this(geom: OGCGeometry) = {
+    this(geom.SRID, {
+      def curToSeq(cur: GeometryCursor): Seq[Geometry] = {
+        cur.next() match {
+          case null => Nil
+          case g => g +: curToSeq(cur)
+        }
       }
+      curToSeq(geom.getEsriGeometryCursor)
     })
   }
 
   /**
-   * Builds a [[GeometryValue]] of type Point, LineString, or MultiLineString, with default SRID
-   * @param points One or a sequence of coordinate pairs
+   * [[OGCGeometry]] built from the enclosed [[Geometry]]
    */
-  def this(points: (Double, Double)*) = {
-    this(GeometryValue.WGS84, points: _*)
+  @transient
+  lazy val ogc = {
+    if (geom == null) null
+    else {
+      val cursor = new SimpleGeometryCursor(geom.toArray)
+      OGCGeometry.createFromEsriCursor(cursor, SpatialReference.create(srid))
+    }
   }
 
   /**
-   * @return Type of enclosed [[Geometry]]
+   * @return Number of rings if enclosed [[Geometry]] is a [[Polygon]], null otherwise
    */
-  def geometryType: Geometry.Type = geom.getType
+  def numberOfRings = geom match {
+    case (p: Polygon) +: Nil => p.getPathCount
+    case _ => null
+  }
 
   /**
-   * @return [[OGCGeometry]] from the enclosed [[Geometry]]
+   * @return Number of sub-geometries
    */
-  def ogc = OGCGeometry.createFromEsriGeometry(geom, SpatialReference.create(srid))
+  def numberOfGeometries =
+    geom match {
+      case (_: Point) +: Nil => 1
+      case (_: Line) +: Nil => 1
+      case (m: MultiVertexGeometry) +: Nil => m.getPointCount
+      case _ => geom.size
+    }
+
+  /**
+   * @param coord Coordinate extractor from point
+   * @return maximum coordinate
+   *         NULL for empty geometry
+   */
+  def maxCoordinate(coord: Point => Double) =
+    getCoordinateBoundary(coord, _ > _)
+
+  /**
+   * @param coord Coordinate extractor from point
+   * @return minimum coordinate
+   *         NULL for empty geometry
+   */
+  def minCoordinate(coord: Point => Double) =
+    getCoordinateBoundary(coord, _ < _)
+
+  /**
+   * Returns a coordinate of the enclosed geometries satisfying some predicate
+   * @param pred Predicate to satisfy (be the greatest, least, etc)
+   * @param coord Function to extract the required coordinate from a point
+   * @return
+   */
+  private def getCoordinateBoundary(coord: (Point => Double), pred: ((Double, Double) => Boolean)) = {
+    def search: Seq[Geometry] => Double = {
+      case (x: Point) +: Nil =>
+        // first value
+        coord(x)
+      case (x: Point) +: tail =>
+        // get candidate from tail evaluation and return the best
+        val candidate = search(tail)
+        val opponent = coord(x)
+        if (pred(opponent, candidate)) opponent else candidate
+      case (x: Segment) +: tail =>
+        // expand the segment in two points and search
+        search(new Point(x.getStartX, x.getStartY) +: new Point(x.getEndX, x.getEndY) +: tail)
+      case (x: MultiVertexGeometry) +: tail =>
+        // expand each vertex and search
+        def expand: Int => Seq[Geometry] = {
+          case i if i < x.getPointCount =>
+            x.getPoint(i) +: expand(i + 1)
+          case _ =>
+            tail
+        }
+        search(expand(0))
+    }
+    if (geom.isEmpty) null else search(geom)
+  }
 
   /**
    * @return JSON representation of the enclosed [[Geometry]]
    */
   def toJson =
-    if (geom == null) null
-    else GeometryEngine.geometryToJson(srid, geom)
+    try {
+      ogc.asJson
+    } catch {
+      case e: Exception =>
+        GeometryValue.LOG.error("toJson failed", e)
+        null
+    }
 
   /**
    * @return GeoJSON representation of the enclosed [[Geometry]]
    */
   def toGeoJson =
-    if (geom == null) null
-    else {
-      val op = OperatorFactoryLocal.getInstance().
-        getOperator(Operator.Type.ExportToGeoJson).
-        asInstanceOf[OperatorExportToGeoJson]
-      op.execute(SpatialReference.create(srid), geom)
+    try {
+      ogc.asGeoJson
+    } catch {
+      case e: Exception =>
+        GeometryValue.LOG.error("toGeoJson failed", e)
+        null
     }
 
   override def toString: String = toGeoJson
@@ -86,6 +158,7 @@ class GeometryValue(val srid: Int, val geom: Geometry) extends Serializable {
  * Factory methods for [[GeometryValue]]
  */
 object GeometryValue {
+  private val LOG = Logger.getLogger(classOf[GeometryValue])
 
   /**
    * Default spatial reference
@@ -97,10 +170,7 @@ object GeometryValue {
    * @return A [[GeometryValue]] built from a json string
    */
   def fromJson(json: String): GeometryValue = {
-    val jsonParser = new JsonFactory().createJsonParser(json)
-    jsonParser.nextToken()
-    val geom = GeometryEngine.jsonToGeometry(jsonParser)
-    new GeometryValue(geom.getSpatialReference.getID, geom.getGeometry)
+    new GeometryValue(OGCGeometry.fromJson(json))
   }
 
   /**
@@ -108,46 +178,103 @@ object GeometryValue {
    * @return A [[GeometryValue]] built from a geoJson string
    */
   def fromGeoJson(geoJson: String): GeometryValue = {
-    val op = OperatorFactoryLocal.getInstance.
-      getOperator(Operator.Type.ImportFromGeoJson).
-      asInstanceOf[OperatorImportFromGeoJson]
-    val geom = op.execute(0, Geometry.Type.Unknown, geoJson, null)
-
-    new GeometryValue(geom.getSpatialReference.getID, geom.getGeometry)
+    new GeometryValue(OGCGeometry.fromGeoJson(geoJson))
   }
 
   /**
+   * @param srid
    * @param xy
    * @return A [[GeometryValue]] enclosing a [[Point]]
    */
-  def point(xy: (Double, Double)) =
-    new GeometryValue(GeometryBuilder.mkPoint(xy))
+  def point(srid: Int, xy: (Double, Double)): GeometryValue =
+    new GeometryValue(srid, GeometryBuilder.mkPoint(xy))
+  /**
+   * @param xy
+   * @return A [[GeometryValue]] enclosing a [[Point]] with default SRID
+   */
+  def point(xy: (Double, Double)): GeometryValue =
+    point(WGS84, xy)
 
   /**
+   * @param srid
+   * @param points
+   * @return A [[GeometryValue]] enclosing a [[MultiPoint]]
+   */
+  def multiPoint(srid: Int, points: (Double, Double)*): GeometryValue = {
+    new GeometryValue(srid, GeometryBuilder.mkMultiPoint(points))
+  }
+  /**
+   * @param points
+   * @return A [[GeometryValue]] enclosing a [[MultiPoint]] with default SRID
+   */
+  def multiPoint(points: (Double, Double)*): GeometryValue =
+    multiPoint(WGS84, points: _*)
+
+  /**
+   * @param srid
    * @param points
    * @return A [[GeometryValue]] enclosing a [[Polyline]] with a single path
    */
-  def line(points: (Double, Double)*) =
-    new GeometryValue(GeometryBuilder.mkLine(points))
+  def line(srid: Int, points: (Double, Double)*): GeometryValue =
+    new GeometryValue(srid, GeometryBuilder.mkLine(points))
+  /**
+   * @param points
+   * @return A [[GeometryValue]] enclosing a [[Polyline]] with a single path and default SRID
+   */
+  def line(points: (Double, Double)*): GeometryValue =
+    line(WGS84, points: _*)
 
   /**
+   * @param srid
    * @param lines
    * @return A [[GeometryValue]] enclosing a [[Polyline]] with multiple paths
    */
-  def multiLine(lines: Seq[(Double, Double)]*) =
-    new GeometryValue(GeometryBuilder.mkMultiLine(lines))
+  def multiLine(srid: Int, lines: Seq[(Double, Double)]*): GeometryValue =
+    new GeometryValue(srid, GeometryBuilder.mkMultiLine(lines))
+  /**
+   * @param lines
+   * @return A [[GeometryValue]] enclosing a [[Polyline]] with multiple paths and default SRID
+   */
+  def multiLine(lines: Seq[(Double, Double)]*): GeometryValue =
+    multiLine(WGS84, lines: _*)
 
   /**
+   * @param srid
    * @param points
    * @return A [[GeometryValue]] enclosing a [[Polygon]] with a single ring
    */
-  def polygon(points: (Double, Double)*) =
-    new GeometryValue(GeometryBuilder.mkPolygon(points))
+  def polygon(srid: Int, points: (Double, Double)*): GeometryValue =
+    new GeometryValue(srid, GeometryBuilder.mkPolygon(points))
+  /**
+   * @param points
+   * @return A [[GeometryValue]] enclosing a [[Polygon]] with a single ring and default SRID
+   */
+  def polygon(points: (Double, Double)*): GeometryValue =
+    polygon(WGS84, points: _*)
 
   /**
+   * @param srid
    * @param lines
    * @return A [[GeometryValue]] enclosing a [[Polygon]] with multiple rings
    */
-  def multiPolygon(lines: Seq[(Double, Double)]*) =
-    new GeometryValue(GeometryBuilder.mkMultiPolygon(lines))
+  def multiPolygon(srid: Int, lines: Seq[(Double, Double)]*): GeometryValue =
+    new GeometryValue(srid, GeometryBuilder.mkMultiPolygon(lines))
+  /**
+   * @param lines
+   * @return A [[GeometryValue]] enclosing a [[Polygon]] with multiple rings and default SRID
+   */
+  def multiPolygon(lines: Seq[(Double, Double)]*): GeometryValue =
+    multiPolygon(WGS84, lines: _*)
+
+  /**
+   * @param srid
+   * @param geometries
+   * @return A [[GeometryValue]] enclosing a geometry collection
+   */
+  def collection(srid: Int, geometries: Geometry*): GeometryValue = {
+    val sr = SpatialReference.create(srid)
+    val ogcGeoms = geometries.map(g => OGCGeometry.createFromEsriGeometry(g, sr))
+    val geoColl = new OGCConcreteGeometryCollection(JavaConversions.seqAsJavaList(ogcGeoms), sr)
+    new GeometryValue(geoColl)
+  }
 }
