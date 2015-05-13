@@ -5,8 +5,6 @@ import org.scalatest.FunSuite
 
 /**
  * UDF test suite
- *
- * @author drubbo <ubik@gamezoo.it>
  */
 class UDFTest extends FunSuite {
   val point = Geometry.point((2.0, 2.0))
