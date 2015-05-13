@@ -2,6 +2,7 @@ package org.betterers.spark.gis.udf
 
 import com.esri.core.geometry._
 import com.esri.core.geometry.ogc._
+import org.apache.spark.sql.SQLContext
 import org.betterers.spark.gis.Geometry
 
 /**
@@ -523,4 +524,68 @@ object Functions {
    */
   def ST_AsGeoJSON(geom: Geometry): String =
     geom.toGeoJson
+
+  /**
+   * Registers every GIS function in a SQL context
+   * @param ctx
+   */
+  def register(ctx: SQLContext): Unit = {
+    ctx.udf.register("ST_Boundary", ST_Boundary(_))
+    ctx.udf.register("ST_CoordDim", ST_CoordDim(_))
+    ctx.udf.register("ST_Dimension", ST_Dimension(_))
+    ctx.udf.register("ST_EndPoint", ST_EndPoint(_))
+    ctx.udf.register("ST_Envelope", ST_Envelope(_))
+    ctx.udf.register("ST_ExteriorRing", ST_ExteriorRing(_))
+    ctx.udf.register("ST_GeometryN", ST_GeometryN(_, _))
+    ctx.udf.register("ST_GeometryType", ST_GeometryType(_))
+    ctx.udf.register("ST_InteriorRingN", ST_InteriorRingN(_, _))
+    ctx.udf.register("ST_IsClosed", ST_IsClosed(_))
+    ctx.udf.register("ST_IsCollection", ST_IsCollection(_))
+    ctx.udf.register("ST_IsEmpty", ST_IsEmpty(_))
+    ctx.udf.register("ST_IsRing", ST_IsRing(_))
+    ctx.udf.register("ST_IsSimple", ST_IsSimple(_))
+    ctx.udf.register("ST_M", ST_M(_))
+    ctx.udf.register("ST_NDims", ST_NDims(_))
+    ctx.udf.register("ST_NPoints", ST_NPoints(_))
+    ctx.udf.register("ST_NRings", ST_NRings(_))
+    ctx.udf.register("ST_NumGeometries", ST_NumGeometries(_))
+    ctx.udf.register("ST_NumInteriorRings", ST_NumInteriorRings(_))
+    ctx.udf.register("ST_NumInteriorRing", ST_NumInteriorRing(_))
+    ctx.udf.register("ST_SRID", ST_SRID(_))
+    ctx.udf.register("ST_StartPoint", ST_StartPoint(_))
+    ctx.udf.register("ST_X", ST_X(_))
+    ctx.udf.register("ST_XMax", ST_XMax(_))
+    ctx.udf.register("ST_XMin", ST_XMin(_))
+    ctx.udf.register("ST_Y", ST_Y(_))
+    ctx.udf.register("ST_YMax", ST_YMax(_))
+    ctx.udf.register("ST_YMin", ST_YMin(_))
+    ctx.udf.register("ST_Z", ST_Z(_))
+    ctx.udf.register("ST_ZMax", ST_ZMax(_))
+    ctx.udf.register("ST_ZMin", ST_ZMin(_))
+    ctx.udf.register("ST_Area", ST_Area(_))
+    ctx.udf.register("ST_Centroid", ST_Centroid(_))
+    ctx.udf.register("ST_Contains", ST_Contains(_, _))
+    ctx.udf.register("ST_Crosses", ST_Crosses(_, _))
+    ctx.udf.register("ST_Disjoint", ST_Disjoint(_, _))
+    ctx.udf.register("ST_Distance", ST_Distance(_, _))
+    ctx.udf.register("ST_Equals", ST_Equals(_, _))
+    ctx.udf.register("ST_Intersects", ST_Intersects(_, _))
+    ctx.udf.register("ST_Length", ST_Length(_))
+    ctx.udf.register("ST_Overlaps", ST_Overlaps(_, _))
+    ctx.udf.register("ST_PointOnSurface", ST_PointOnSurface(_))
+    ctx.udf.register("ST_Touches", ST_Touches(_, _))
+    ctx.udf.register("ST_Within", ST_Within(_, _))
+    ctx.udf.register("ST_Buffer", ST_Buffer(_, _))
+    ctx.udf.register("ST_ConvexHull", ST_ConvexHull(_))
+    ctx.udf.register("ST_Difference", ST_Difference(_, _))
+    ctx.udf.register("ST_Intersection", ST_Intersection(_, _))
+    ctx.udf.register("ST_Simplify", ST_Simplify(_))
+    ctx.udf.register("ST_SymDifference", ST_SymDifference(_, _))
+    ctx.udf.register("ST_Union", ST_Union(_, _))
+    ctx.udf.register("ST_Relate", ST_Relate(_, _, _))
+    ctx.udf.register("ST_AsBinary", ST_AsBinary(_))
+    ctx.udf.register("ST_AsEWKB", ST_AsEWKB(_))
+    ctx.udf.register("ST_AsEWKT", ST_AsEWKT(_))
+    ctx.udf.register("ST_AsGeoJSON", ST_AsGeoJSON(_))
+  }
 }
