@@ -20,5 +20,7 @@ package org.betterers.spark
 /**
  * GIS extensions for SparkSQL
  */
-package object gis {}
+package object gis {
+  type ESRIGeometry = com.esri.core.geometry.Geometry
+}
 

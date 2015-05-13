@@ -9,19 +9,19 @@ import org.scalatest.FunSuite
  * @author drubbo <ubik@gamezoo.it>
  */
 class UDFTest extends FunSuite {
-  val point = GeometryValue.point((2.0, 2.0))
-  val multiPoint = GeometryValue.multiPoint((1.0, 1.0), (2.0, 2.0), (3.0, 3.0))
-  var line = GeometryValue.line((11.0, 11.0), (12.0, 12.0))
-  var multiLine = GeometryValue.multiLine(
+  val point = Geometry.point((2.0, 2.0))
+  val multiPoint = Geometry.multiPoint((1.0, 1.0), (2.0, 2.0), (3.0, 3.0))
+  var line = Geometry.line((11.0, 11.0), (12.0, 12.0))
+  var multiLine = Geometry.multiLine(
     Seq((11.0, 1.0), (23.0, 23.0)),
     Seq((31.0, 3.0), (42.0, 42.0)))
-  var polygon = GeometryValue.polygon((1.0, 1.0), (2.0, 2.0), (3.0, 1.0))
-  var multiPolygon = GeometryValue.multiPolygon(
+  var polygon = Geometry.polygon((1.0, 1.0), (2.0, 2.0), (3.0, 1.0))
+  var multiPolygon = Geometry.multiPolygon(
     Seq((1.0, 1.0), (2.0, 2.0), (3.0, 1.0)),
     Seq((1.1, 1.1), (2.0, 1.9), (2.5, 1.1))
   )
-  val collection = GeometryValue.aggregate(point, multiPoint, line)
-  val all: Seq[GeometryValue] = Seq(point, multiPoint, line, multiLine, polygon, multiPolygon, collection)
+  val collection = Geometry.aggregate(point, multiPoint, line)
+  val all: Seq[Geometry] = Seq(point, multiPoint, line, multiLine, polygon, multiPolygon, collection)
 
   test("ST_Boundary") {
     //all.foreach(g => println(Functions.ST_Boundary(g).map(_.toGeoJson)))

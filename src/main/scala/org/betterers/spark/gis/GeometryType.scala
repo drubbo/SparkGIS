@@ -2,29 +2,30 @@ package org.betterers.spark.gis
 
 import java.io.CharArrayWriter
 
+import org.apache.spark.Logging
 import org.apache.spark.sql.types._
 import org.codehaus.jackson.JsonFactory
 import org.json.JSONException
 
 /**
- * User defined type for [[GeometryValue]] instances
+ * User defined type for [[Geometry]] instances
  *
  * @author drubbo <ubik@gamezoo.it>
  */
-class GeometryType extends UserDefinedType[GeometryValue] {
+class GeometryType extends UserDefinedType[Geometry] with Logging {
 
   override def sqlType: DataType = StringType
 
-  override def userClass: Class[GeometryValue] = classOf[GeometryValue]
+  override def userClass: Class[Geometry] = classOf[Geometry]
 
   /**
-   * Translates a [[GeometryValue]] to a geoJson [[String]]
+   * Translates a [[Geometry]] to a geoJson [[String]]
    * @param obj
    * @return
    */
   override def serialize(obj: Any): String = {
     obj match {
-      case g: GeometryValue =>
+      case g: Geometry =>
         g.toGeoJson
       case x =>
         throw new IllegalArgumentException("Invalid GeometryValue value to serialize: " + x)
@@ -32,26 +33,31 @@ class GeometryType extends UserDefinedType[GeometryValue] {
   }
 
   /**
-   * Translates a [[GeometryValue]], a [[String]] containing a GeoJSON, or a [[Map]] obtained
-   * during JSON deserialization to a [[GeometryValue]]
+   * Translates a [[Geometry]], a [[String]] containing a GeoJSON, or a [[Map]] obtained
+   * during JSON deserialization to a [[Geometry]]
    * @param datum
    * @return
    */
-  override def deserialize(datum: Any): GeometryValue = {
+  override def deserialize(datum: Any): Geometry = {
     datum match {
-      case g: GeometryValue => g
+      case g: Geometry => g
+
       case s: String =>
-        try {
-          GeometryValue.fromGeoJson(s)
-        } catch {
-          case _: JSONException =>
-            try {
-              GeometryValue.fromJson(s)
-            } catch {
-              case _: JSONException =>
-                GeometryValue.fromString(s)
-            }
+        def tryOrElse[I,O](conversion: I => O, msg: String, alternative: I => O)(input: I): O = {
+          try {
+            conversion(input)
+          } catch {
+            case e: Throwable =>
+              logWarning(msg, e)
+              alternative(input)
+          }
         }
+        tryOrElse(
+          Geometry.fromGeoJson,
+          "Not a GeoJSON", tryOrElse(
+            Geometry.fromJson,
+            "Not a REST JSON", Geometry.fromString))(s)
+
       case r: Map[_, _] =>
         val writer = new CharArrayWriter()
         val gen = new JsonFactory().createJsonGenerator(writer)
@@ -77,7 +83,8 @@ class GeometryType extends UserDefinedType[GeometryValue] {
         val json = writer.toString
         gen.close()
 
-        GeometryValue.fromGeoJson(json)
+        Geometry.fromGeoJson(json)
+
       case x =>
         throw new IllegalArgumentException("Can't deserialize to GeometryValue: " + x)
     }

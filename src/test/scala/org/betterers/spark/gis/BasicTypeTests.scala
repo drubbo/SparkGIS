@@ -21,36 +21,36 @@ class BasicTypeTests extends FunSuite {
   )
 
   test("Factory methods") {
-    val point = GeometryValue.point((1.0, 1.0))
+    val point = Geometry.point((1.0, 1.0))
     assert(point.toString == "POINT (1 1)")
 
-    val multiPoint = GeometryValue.multiPoint((1.0, 1.0), (2.0, 2.0))
+    val multiPoint = Geometry.multiPoint((1.0, 1.0), (2.0, 2.0))
     assert(multiPoint.toString == "MULTIPOINT ((1 1), (2 2))")
 
-    val line = GeometryValue.line((1.0, 1.0), (2.0, 2.0), (3.0, 3.0), (4.0, 4.0))
+    val line = Geometry.line((1.0, 1.0), (2.0, 2.0), (3.0, 3.0), (4.0, 4.0))
     assert(line.toString == "LINESTRING (1 1, 2 2, 3 3, 4 4)")
 
-    val multiLine = GeometryValue.multiLine(Seq((1.0, 2.0), (2.0, 3.0)), Seq((10.0, 20.0), (20.0, 30.0)))
+    val multiLine = Geometry.multiLine(Seq((1.0, 2.0), (2.0, 3.0)), Seq((10.0, 20.0), (20.0, 30.0)))
     assert(multiLine.toString == "MULTILINESTRING ((1 2, 2 3), (10 20, 20 30))")
 
-    val polygon = GeometryValue.polygon((1.0, 1.0), (2.0, 2.0), (3.0, 1.0), (2.0, 0.0))
+    val polygon = Geometry.polygon((1.0, 1.0), (2.0, 2.0), (3.0, 1.0), (2.0, 0.0))
     assert(polygon.toString == "POLYGON ((1 1, 2 0, 3 1, 2 2, 1 1))")
 
-    val mPoly = GeometryValue.multiPolygon(
+    val mPoly = Geometry.multiPolygon(
       Seq((1.0, 1.0), (1.0, 2.0), (2.0, 2.0), (2.0, 1.0)),
       Seq((1.25, 1.25), (1.25, 1.75), (1.75, 1.75), (1.75, 1.25))
     )
     assert(mPoly.toString == "MULTIPOLYGON (((1 1, 2 1, 2 2, 1 2, 1 1)), ((1.25 1.25, 1.75 1.25, 1.75 1.75, 1.25 1.75, 1.25 1.25)))")
 
-    val coll = GeometryValue.aggregate(point, line, polygon)
+    val coll = Geometry.aggregate(point, line, polygon)
     assert(coll.toString == "GEOMETRYCOLLECTION (POINT (1 1), LINESTRING (1 1, 2 2, 3 3, 4 4), POLYGON ((1 1, 2 0, 3 1, 2 2, 1 1)))")
   }
 
   test("From JSON") {
     val data = Seq(
-      Row(1, GeometryValue.fromGeoJson(jsons(1))),
-      Row(2, GeometryValue.fromGeoJson(jsons(2))),
-      Row(3, GeometryValue.fromGeoJson(jsons(3)))
+      Row(1, Geometry.fromGeoJson(jsons(1))),
+      Row(2, Geometry.fromGeoJson(jsons(2))),
+      Row(3, Geometry.fromGeoJson(jsons(3)))
     )
     assert(data.mkString(",") ==
       "[1,POINT (1 1)]," +
@@ -59,15 +59,15 @@ class BasicTypeTests extends FunSuite {
   }
 
   test("To JSON") {
-    val point = GeometryValue.point((1.0, 1.0))
+    val point = Geometry.point((1.0, 1.0))
     assert(point.toJson == "{\"x\":1,\"y\":1,\"spatialReference\":{\"wkid\":4326}}")
     assert(point.toGeoJson == "{\"type\":\"Point\",\"coordinates\":[1.0,1.0]}")
 
-    val line = GeometryValue.line((1.0, 1.0), (2.0, 2.0))
+    val line = Geometry.line((1.0, 1.0), (2.0, 2.0))
     assert(line.toJson == "{\"paths\":[[[1,1],[2,2]]],\"spatialReference\":{\"wkid\":4326}}")
     assert(line.toGeoJson == "{\"type\":\"LineString\",\"coordinates\":[[1.0,1.0],[2.0,2.0]]}")
 
-    val polygon = GeometryValue.polygon((1.0, 1.0), (2.0, 2.0), (3.0, 1.0), (2.0, 0.0))
+    val polygon = Geometry.polygon((1.0, 1.0), (2.0, 2.0), (3.0, 1.0), (2.0, 0.0))
     assert(polygon.toJson == "{\"rings\":[[[1,1],[2,2],[3,1],[2,0],[1,1]]],\"spatialReference\":{\"wkid\":4326}}")
     assert(polygon.toGeoJson == "{\"type\":\"Polygon\",\"coordinates\":[[[1.0,1.0],[2.0,2.0],[3.0,1.0],[2.0,0.0],[1.0,1.0]]]}")
   }
@@ -92,8 +92,8 @@ class BasicTypeTests extends FunSuite {
 
   test("Values in RDDs") {
     val data = Seq(
-      Row(1, GeometryValue.fromGeoJson(jsons(1))),
-      Row(2, GeometryValue.fromGeoJson(jsons(2)))
+      Row(1, Geometry.fromGeoJson(jsons(1))),
+      Row(2, Geometry.fromGeoJson(jsons(2)))
     )
     val rdd = sparkContext.parallelize(data)
     val df = sqlContext.createDataFrame(rdd, schema)

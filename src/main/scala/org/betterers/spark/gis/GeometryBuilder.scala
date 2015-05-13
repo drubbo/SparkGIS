@@ -3,7 +3,7 @@ package org.betterers.spark.gis
 import com.esri.core.geometry._
 
 /**
- * Factory methods to build [[Geometry]] values from sets of coordinate pairs
+ * Factory methods to build [[ESRIGeometry]] values from sets of coordinate pairs
  *
  * @author drubbo <ubik@gamezoo.it>
  */
