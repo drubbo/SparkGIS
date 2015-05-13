@@ -4,14 +4,23 @@ import com.esri.core.geometry._
 import com.esri.core.geometry.ogc._
 import org.betterers.spark.gis.GeometryValue
 
+/**
+ * GIS functions as UDFs
+ *
+ * @author drubbo <ubik@gamezoo.it>
+ */
 object Functions {
 
   /**
    * @param geom
-   * @return the closure of the combinatorial boundary of this geometry
+   * @return the closure of the combinatorial boundary of this geometry;
+   *         None if the input parameter is a GEOMETRYCOLLECTION
    */
-  def ST_Boundary(geom: GeometryValue): GeometryValue =
-    new GeometryValue(geom.ogc.boundary())
+  def ST_Boundary(geom: GeometryValue): Option[GeometryValue] =
+    geom.ogc match {
+      case c: OGCConcreteGeometryCollection => None
+      case g => Some(new GeometryValue(g.boundary()))
+    }
 
   /**
    * @param geom
@@ -31,14 +40,12 @@ object Functions {
   /**
    * @param geom
    * @return the last point of a LINESTRING geometry as a POINT;
-   *         NULL if the input parameter is not a LINESTRING
+   *         None if the input parameter is not a LINESTRING
    */
-  def ST_EndPoint(geom: GeometryValue): GeometryValue =
+  def ST_EndPoint(geom: GeometryValue): Option[GeometryValue] =
     geom.ogc match {
-      case line: OGCLineString =>
-        new GeometryValue(line.endPoint())
-      case _ =>
-        null
+      case line: OGCLineString => Some(new GeometryValue(line.endPoint()))
+      case _ => None
     }
 
   /**
@@ -51,14 +58,12 @@ object Functions {
   /**
    * @param geom
    * @return a line string representing the exterior ring of the POLYGON geometry;
-   *         NULL if the geometry is not a polygon
+   *         None if the geometry is not a polygon
    */
-  def ST_ExteriorRing(geom: GeometryValue): GeometryValue =
+  def ST_ExteriorRing(geom: GeometryValue): Option[GeometryValue] =
     geom.ogc match {
-      case poly: OGCPolygon =>
-        new GeometryValue(poly.exteriorRing())
-      case _ =>
-        null
+      case poly: OGCPolygon => Some(new GeometryValue(poly.exteriorRing()))
+      case _ => None
     }
 
   /**
@@ -66,14 +71,12 @@ object Functions {
    * @param n
    * @return the 1-based Nth geometry if the geometry is a GEOMETRYCOLLECTION, (MULTI)POINT, (MULTI)LINESTRING,
    *         MULTICURVE or (MULTI)POLYGON, POLYHEDRALSURFACE;
-   *         NULL otherwise
+   *         None otherwise
    */
-  def ST_GeometryN(geom: GeometryValue, n: Int): GeometryValue =
+  def ST_GeometryN(geom: GeometryValue, n: Int): Option[GeometryValue] =
     geom.ogc match {
-      case coll: OGCGeometryCollection =>
-        new GeometryValue(coll.geometryN(n))
-      case _ =>
-        null
+      case coll: OGCGeometryCollection => Some(new GeometryValue(coll.geometryN(n)))
+      case _ => None
     }
 
   /**
@@ -81,20 +84,18 @@ object Functions {
    * @return the type of the geometry as a string. Eg: 'LINESTRING', 'POLYGON', 'MULTIPOINT', etc.
    */
   def ST_GeometryType(geom: GeometryValue): String =
-    geom.ogc.geometryType().toUpperCase()
+    geom.ogc.geometryType().toUpperCase
 
   /**
    * @param geom
    * @param n
    * @return the 1-based Nth interior LINESTRING ring of the polygon geometry;
-   *         NULL if the geometry is not a polygon or the given N is out of range
+   *         None if the geometry is not a polygon or the given N is out of range
    */
-  def ST_InteriorRingN(geom: GeometryValue, n: Int): GeometryValue =
+  def ST_InteriorRingN(geom: GeometryValue, n: Int): Option[GeometryValue] =
     geom.ogc match {
-      case poly: OGCPolygon =>
-        new GeometryValue(poly.interiorRingN(n))
-      case _ =>
-        null
+      case poly: OGCPolygon => Some(new GeometryValue(poly.interiorRingN(n)))
+      case _ => None
     }
 
   /**
@@ -103,12 +104,9 @@ object Functions {
    */
   def ST_IsClosed(geom: GeometryValue): Boolean =
     geom.ogc match {
-      case line: OGCCurve =>
-        line.isClosed
-      case multi: OGCMultiCurve =>
-        multi.isClosed
-      case _ =>
-        false
+      case line: OGCCurve => line.isClosed
+      case multi: OGCMultiCurve => multi.isClosed
+      case _ => false
     }
 
   /**
@@ -132,10 +130,8 @@ object Functions {
    */
   def ST_IsRing(geom: GeometryValue): Boolean =
     geom.ogc match {
-      case line: OGCCurve =>
-        line.isRing
-      case _ =>
-        false
+      case line: OGCCurve => line.isRing
+      case _ => false
     }
 
   /**
@@ -148,12 +144,12 @@ object Functions {
 
   /**
    * @param geom
-   * @return the M coordinate of the POINT geometry, or NULL if not available or not a point
+   * @return the M coordinate of the POINT geometry, or None if not available or not a point
    */
-  def ST_M(geom: GeometryValue) =
+  def ST_M(geom: GeometryValue): Option[Double] =
     geom.ogc match {
-      case pt: OGCPoint => pt.M
-      case _ => null
+      case pt: OGCPoint => Some(pt.M)
+      case _ => None
     }
 
   /**
@@ -170,7 +166,7 @@ object Functions {
    */
   def ST_NPoints(geom: GeometryValue): Int = {
     def count(cur: GeometryCursor): Int = {
-      cur.next match {
+      cur.next() match {
         case null => 0
         case g: MultiVertexGeometry => g.getPointCount + count(cur)
         case g: Line => 2 + count(cur)
@@ -191,7 +187,7 @@ object Functions {
    * @param geom
    * @return if geometry is a GEOMETRYCOLLECTION (or MULTI*), the number of geometries;
    *         for single geometries, 1;
-   *         NULL otherwise.
+   *         None otherwise.
    */
   def ST_NumGeometries(geom: GeometryValue) =
     geom.numberOfGeometries
@@ -200,13 +196,8 @@ object Functions {
    * @param geom
    * @return the number of interior rings of the first polygon in the geometry
    */
-  def ST_NumInteriorRings(geom: GeometryValue) =
-    geom.numberOfRings match {
-      case n: Int =>
-        n - 1
-      case _ =>
-        null
-    }
+  def ST_NumInteriorRings(geom: GeometryValue): Option[Int] =
+    geom.numberOfRings.map(_ - 1)
 
   /**
    * Alias for [[ST_NumInteriorRings()]]
@@ -226,86 +217,93 @@ object Functions {
   /**
    * @param geom
    * @return the first point of a LINESTRING geometry as a POINT;
-   *         NULL if the input parameter is not a LINESTRING
+   *         None if the input parameter is not a LINESTRING
    */
-  def ST_StartPoint(geom: GeometryValue): GeometryValue =
+  def ST_StartPoint(geom: GeometryValue): Option[GeometryValue] =
     geom.ogc match {
-      case line: OGCLineString =>
-        new GeometryValue(line.startPoint())
-      case _ =>
-        null
+      case line: OGCLineString => Some(new GeometryValue(line.startPoint()))
+      case _ => None
     }
 
   /**
    * @param geom
-   * @return the X coordinate of the POINT geometry, or NULL if not available or not a point
+   * @return the X coordinate of the POINT geometry;
+   *         None if not available or not a point
    */
-  def ST_X(geom: GeometryValue) =
+  def ST_X(geom: GeometryValue): Option[Double] =
     geom.ogc match {
-      case pt: OGCPoint => pt.X
-      case _ => null
+      case pt: OGCPoint => Some(pt.X)
+      case _ => None
     }
 
   /**
    * @param geom
-   * @return maximum X coordinate of the geometry, NULL if empty geometry
+   * @return maximum X coordinate of the geometry;
+   *         None if empty geometry
    */
-  def ST_XMax(geom: GeometryValue) =
+  def ST_XMax(geom: GeometryValue): Option[Double] =
     geom.maxCoordinate(_.getX)
 
   /**
    * @param geom
-   * @return minimum X coordinate of the geometry, NULL if empty geometry
+   * @return minimum X coordinate of the geometry;
+   *         None if empty geometry
    */
-  def ST_XMin(geom: GeometryValue) =
+  def ST_XMin(geom: GeometryValue): Option[Double] =
     geom.minCoordinate(_.getX)
 
   /**
    * @param geom
-   * @return the Y coordinate of the POINT geometry, or NULL if not available or not a point
+   * @return the Y coordinate of the POINT geometry;
+   *         None if not available or not a point
    */
-  def ST_Y(geom: GeometryValue) =
+  def ST_Y(geom: GeometryValue): Option[Double] =
     geom.ogc match {
-      case pt: OGCPoint => pt.Y
-      case _ => null
+      case pt: OGCPoint => Some(pt.Y)
+      case _ => None
     }
 
   /**
    * @param geom
-   * @return maximum Y coordinate of the geometry, NULL if empty geometry
+   * @return maximum Y coordinate of the geometry;
+   *         None if empty geometry
    */
-  def ST_YMax(geom: GeometryValue) =
+  def ST_YMax(geom: GeometryValue): Option[Double] =
     geom.maxCoordinate(_.getY)
 
   /**
    * @param geom
-   * @return minimum Y coordinate of the geometry, NULL if empty geometry
+   * @return minimum Y coordinate of the geometry;
+   *         None if empty geometry
    */
-  def ST_YMin(geom: GeometryValue) =
+  def ST_YMin(geom: GeometryValue): Option[Double] =
     geom.minCoordinate(_.getY)
 
   /**
    * @param geom
-   * @return the Z coordinate of the POINT geometry, or NULL if not available or not a point
+   * @return the Z coordinate of the POINT geometry;
+   *         None if not available or not a point
    */
-  def ST_Z(geom: GeometryValue) =
+  def ST_Z(geom: GeometryValue): Option[Double] =
     geom.ogc match {
-      case pt: OGCPoint => pt.Z
-      case _ => null
+      case pt: OGCPoint => Some(pt.Z)
+      case _ => None
     }
 
   /**
    * @param geom
-   * @return maximum Z coordinate of the geometry, NULL if empty geometry
+   * @return maximum Z coordinate of the geometry;
+   *         None if empty geometry
    */
-  def ST_ZMax(geom: GeometryValue) =
+  def ST_ZMax(geom: GeometryValue): Option[Double] =
     geom.maxCoordinate(_.getZ)
 
   /**
    * @param geom
-   * @return minimum Z coordinate of the geometry, NULL if empty geometry
+   * @return minimum Z coordinate of the geometry;
+   *         None if empty geometry
    */
-  def ST_ZMin(geom: GeometryValue) =
+  def ST_ZMin(geom: GeometryValue): Option[Double] =
     geom.minCoordinate(_.getZ)
 
 }

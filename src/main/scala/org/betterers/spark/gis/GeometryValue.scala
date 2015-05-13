@@ -1,7 +1,7 @@
 package org.betterers.spark.gis
 
 import com.esri.core.geometry._
-import com.esri.core.geometry.ogc.{OGCConcreteGeometryCollection, OGCGeometry}
+import com.esri.core.geometry.ogc.{OGCConcreteGeometryCollection, OGCGeometry, OGCPoint}
 import org.apache.log4j.Logger
 import org.apache.spark.sql.types.SQLUserDefinedType
 
@@ -52,20 +52,21 @@ class GeometryValue(val srid: Int, val geom: Seq[Geometry]) extends Serializable
    * [[OGCGeometry]] built from the enclosed [[Geometry]]
    */
   @transient
-  lazy val ogc = {
-    if (geom == null) null
+  lazy val ogc: OGCGeometry = {
+    val sr = SpatialReference.create(srid)
+    if (geom.isEmpty) new OGCPoint(new Point(), sr)
     else {
       val cursor = new SimpleGeometryCursor(geom.toArray)
-      OGCGeometry.createFromEsriCursor(cursor, SpatialReference.create(srid))
+      OGCGeometry.createFromEsriCursor(cursor, sr)
     }
   }
 
   /**
-   * @return Number of rings if enclosed [[Geometry]] is a [[Polygon]], null otherwise
+   * @return Number of rings if enclosed [[Geometry]] is a [[Polygon]]
    */
-  def numberOfRings = geom match {
-    case (p: Polygon) +: Nil => p.getPathCount
-    case _ => null
+  def numberOfRings: Option[Int] = geom match {
+    case (p: Polygon) +: Nil => Some(p.getPathCount)
+    case _ => None
   }
 
   /**
@@ -82,17 +83,17 @@ class GeometryValue(val srid: Int, val geom: Seq[Geometry]) extends Serializable
   /**
    * @param coord Coordinate extractor from point
    * @return maximum coordinate
-   *         NULL for empty geometry
+   *         None for empty geometry
    */
-  def maxCoordinate(coord: Point => Double) =
+  def maxCoordinate(coord: Point => Double): Option[Double] =
     getCoordinateBoundary(coord, _ > _)
 
   /**
    * @param coord Coordinate extractor from point
    * @return minimum coordinate
-   *         NULL for empty geometry
+   *         None for empty geometry
    */
-  def minCoordinate(coord: Point => Double) =
+  def minCoordinate(coord: Point => Double): Option[Double] =
     getCoordinateBoundary(coord, _ < _)
 
   /**
@@ -124,13 +125,13 @@ class GeometryValue(val srid: Int, val geom: Seq[Geometry]) extends Serializable
         }
         search(expand(0))
     }
-    if (geom.isEmpty) null else search(geom)
+    if (geom.isEmpty) None else Some(search(geom))
   }
 
   /**
    * @return JSON representation of the enclosed [[Geometry]]
    */
-  def toJson =
+  def toJson: String =
     try {
       ogc.asJson
     } catch {
@@ -142,7 +143,7 @@ class GeometryValue(val srid: Int, val geom: Seq[Geometry]) extends Serializable
   /**
    * @return GeoJSON representation of the enclosed [[Geometry]]
    */
-  def toGeoJson =
+  def toGeoJson: String =
     try {
       ogc.asGeoJson
     } catch {
@@ -279,8 +280,31 @@ object GeometryValue {
    */
   def collection(srid: Int, geometries: Geometry*): GeometryValue = {
     val sr = SpatialReference.create(srid)
-    val ogcGeoms = geometries.map(g => OGCGeometry.createFromEsriGeometry(g, sr))
+    val ogcGeoms = geometries.map(OGCGeometry.createFromEsriGeometry(_, sr))
     val geoColl = new OGCConcreteGeometryCollection(JavaConversions.seqAsJavaList(ogcGeoms), sr)
     new GeometryValue(geoColl)
   }
+
+  /**
+   * @param geometries
+   * @return A [[GeometryValue]] enclosing a geometry collection with default SRID
+   */
+  def collection(geometries: Geometry*): GeometryValue =
+    collection(WGS84, geometries: _*)
+
+  /**
+   * @param geometries
+   * @return A [[GeometryValue]] enclosing a geometry collection
+   */
+  def aggregate(srid: Int, geometries: GeometryValue*): GeometryValue = {
+    val geoms = geometries.flatMap(_.geom)
+    collection(srid, geoms: _*)
+  }
+
+  /**
+   * @param geometries
+   * @return A [[GeometryValue]] enclosing a geometry collection with default SRID
+   */
+  def aggregate(geometries: GeometryValue*): GeometryValue =
+    aggregate(WGS84, geometries: _*)
 }
