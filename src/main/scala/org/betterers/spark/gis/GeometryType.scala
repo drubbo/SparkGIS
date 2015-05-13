@@ -1,6 +1,7 @@
 package org.betterers.spark.gis
 
 import java.io.CharArrayWriter
+import java.nio.ByteBuffer
 
 import org.apache.spark.Logging
 import org.apache.spark.sql.types._
@@ -42,6 +43,9 @@ class GeometryType extends UserDefinedType[Geometry] with Logging {
       case g: Geometry => g
 
       case s: UTF8String => deserialize(s.toString())
+
+      case b: Array[Byte] => Geometry.fromBinary(b)
+      case b: ByteBuffer => Geometry.fromBinary(b)
 
       case s: String =>
         def tryOrElse[I, O](conversion: I => O, msg: String, alternative: I => O)(input: I): O = {
