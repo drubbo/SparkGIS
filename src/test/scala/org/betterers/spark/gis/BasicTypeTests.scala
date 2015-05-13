@@ -22,21 +22,28 @@ class BasicTypeTests extends FunSuite {
 
   test("Factory methods") {
     val point = GeometryValue.point((1.0, 1.0))
-    assert(point.toGeoJson == "{\"type\":\"Point\",\"coordinates\":[1.0,1.0]}")
+    assert(point.toString == "POINT (1 1)")
+
+    val multiPoint = GeometryValue.multiPoint((1.0, 1.0), (2.0, 2.0))
+    assert(multiPoint.toString == "MULTIPOINT ((1 1), (2 2))")
 
     val line = GeometryValue.line((1.0, 1.0), (2.0, 2.0), (3.0, 3.0), (4.0, 4.0))
-    assert(line.toGeoJson == "{\"type\":\"LineString\",\"coordinates\":[[1.0,1.0],[2.0,2.0],[3.0,3.0],[4.0,4.0]]}")
+    assert(line.toString == "LINESTRING (1 1, 2 2, 3 3, 4 4)")
 
     val multiLine = GeometryValue.multiLine(Seq((1.0, 2.0), (2.0, 3.0)), Seq((10.0, 20.0), (20.0, 30.0)))
-    assert(multiLine.toGeoJson == "{\"type\":\"MultiLineString\",\"coordinates\":[[[1.0,2.0],[2.0,3.0]],[[10.0,20.0],[20.0,30.0]]]}")
+    assert(multiLine.toString == "MULTILINESTRING ((1 2, 2 3), (10 20, 20 30))")
 
-    val polygon = GeometryValue.polygon((1.0, 1.0), (2.0, 2.0), (3.0, 3.0))
-    assert(polygon.toGeoJson == "{\"type\":\"Polygon\",\"coordinates\":[[1.0,1.0],[2.0,2.0],[3.0,3.0],[1.0,1.0]]}")
+    val polygon = GeometryValue.polygon((1.0, 1.0), (2.0, 2.0), (3.0, 1.0), (2.0, 0.0))
+    assert(polygon.toString == "POLYGON ((1 1, 2 0, 3 1, 2 2, 1 1))")
 
     val mPoly = GeometryValue.multiPolygon(
-      Seq((1.0, 1.0), (2.0, 2.0), (3.0, 3.0)),
-      Seq((0.1, 0.1), (0.2, 0.2), (0.3, 0.3)))
-    assert(mPoly.toGeoJson == "{\"type\":\"MultiPolygon\",\"coordinates\":[[[1.0,1.0],[2.0,2.0],[3.0,3.0],[1.0,1.0]],[[0.1,0.1],[0.2,0.2],[0.3,0.3],[0.1,0.1]]]}")
+      Seq((1.0, 1.0), (1.0, 2.0), (2.0, 2.0), (2.0, 1.0)),
+      Seq((1.25, 1.25), (1.25, 1.75), (1.75, 1.75), (1.75, 1.25))
+    )
+    assert(mPoly.toString == "MULTIPOLYGON (((1 1, 2 1, 2 2, 1 2, 1 1)), ((1.25 1.25, 1.75 1.25, 1.75 1.75, 1.25 1.75, 1.25 1.25)))")
+
+    val coll = GeometryValue.aggregate(point, line, polygon)
+    assert(coll.toString == "GEOMETRYCOLLECTION (POINT (1 1), LINESTRING (1 1, 2 2, 3 3, 4 4), POLYGON ((1 1, 2 0, 3 1, 2 2, 1 1)))")
   }
 
   test("From JSON") {
@@ -46,9 +53,9 @@ class BasicTypeTests extends FunSuite {
       Row(3, GeometryValue.fromGeoJson(jsons(3)))
     )
     assert(data.mkString(",") ==
-      "[1,{\"type\":\"Point\",\"coordinates\":[1.0,1.0]}]," +
-        "[2,{\"type\":\"LineString\",\"coordinates\":[[12.0,13.0],[15.0,20.0]]}]," +
-        "[3,{\"type\":\"MultiLineString\",\"coordinates\":[[[12.0,13.0],[15.0,20.0]],[[7.0,9.0],[11.0,17.0]]]}]")
+      "[1,POINT (1 1)]," +
+      "[2,LINESTRING (12 13, 15 20)]," +
+      "[3,MULTILINESTRING ((12 13, 15 20), (7 9, 11 17))]")
   }
 
   test("To JSON") {
@@ -59,6 +66,19 @@ class BasicTypeTests extends FunSuite {
     val line = GeometryValue.line((1.0, 1.0), (2.0, 2.0))
     assert(line.toJson == "{\"paths\":[[[1,1],[2,2]]],\"spatialReference\":{\"wkid\":4326}}")
     assert(line.toGeoJson == "{\"type\":\"LineString\",\"coordinates\":[[1.0,1.0],[2.0,2.0]]}")
+
+    val polygon = GeometryValue.polygon((1.0, 1.0), (2.0, 2.0), (3.0, 1.0), (2.0, 0.0))
+    assert(polygon.toJson == "{\"rings\":[[[1,1],[2,2],[3,1],[2,0],[1,1]]],\"spatialReference\":{\"wkid\":4326}}")
+    assert(polygon.toGeoJson == "{\"type\":\"Polygon\",\"coordinates\":[[[1.0,1.0],[2.0,2.0],[3.0,1.0],[2.0,0.0],[1.0,1.0]]]}")
+  }
+
+  test("Deserialize") {
+    val p1 = GeometryType.Instance.deserialize("POINT (1 1)")
+    val p2 = GeometryType.Instance.deserialize("{\"x\":1,\"y\":1,\"spatialReference\":{\"wkid\":4326}}")
+    val p3 = GeometryType.Instance.deserialize("{\"type\":\"Point\",\"coordinates\":[1.0,1.0]}")
+    assert(p1 == p2)
+    assert(p1 == p3)
+    assert(p2 == p3)
   }
 
   test("Load JSON RDD with explicit schema") {
@@ -67,7 +87,7 @@ class BasicTypeTests extends FunSuite {
       "{\"id\":2,\"geo\":" + jsons(2) + "}"
     ))
     val df = sqlContext.jsonRDD(rdd, schema)
-    assert(df.collect().mkString(",") == "[1,{\"type\":\"Point\",\"coordinates\":[1.0,1.0]}],[2,{\"type\":\"LineString\",\"coordinates\":[[12.0,13.0],[15.0,20.0]]}]")
+    assert(df.collect().mkString(",") == "[1,POINT (1 1)],[2,LINESTRING (12 13, 15 20)]")
   }
 
   test("Values in RDDs") {
@@ -77,7 +97,7 @@ class BasicTypeTests extends FunSuite {
     )
     val rdd = sparkContext.parallelize(data)
     val df = sqlContext.createDataFrame(rdd, schema)
-    assert(df.collect().mkString(",") == "[1,{\"type\":\"Point\",\"coordinates\":[1.0,1.0]}],[2,{\"type\":\"LineString\",\"coordinates\":[[12.0,13.0],[15.0,20.0]]}]")
+    assert(df.collect().mkString(",") == "[1,POINT (1 1)],[2,LINESTRING (12 13, 15 20)]")
 
   }
 }

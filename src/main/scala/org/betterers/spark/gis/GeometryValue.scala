@@ -132,27 +132,24 @@ class GeometryValue(val srid: Int, val geom: Seq[Geometry]) extends Serializable
    * @return JSON representation of the enclosed [[Geometry]]
    */
   def toJson: String =
-    try {
-      ogc.asJson
-    } catch {
-      case e: Exception =>
-        GeometryValue.LOG.error("toJson failed", e)
-        null
-    }
+    ogc.asJson
 
   /**
    * @return GeoJSON representation of the enclosed [[Geometry]]
    */
   def toGeoJson: String =
-    try {
-      ogc.asGeoJson
-    } catch {
-      case e: Exception =>
-        GeometryValue.LOG.error("toGeoJson failed", e)
-        null
-    }
+    ogc.asGeoJson
 
-  override def toString: String = toGeoJson
+  /**
+   * @return WKT representation of the enclosed [[Geometry]]
+   */
+  override def toString: String =
+    ogc.asText
+
+  override def equals(other: Any) = other match {
+    case g: GeometryValue => this.toString == g.toString
+    case _ => false
+  }
 }
 
 /**
@@ -170,17 +167,22 @@ object GeometryValue {
    * @param json
    * @return A [[GeometryValue]] built from a json string
    */
-  def fromJson(json: String): GeometryValue = {
+  def fromJson(json: String): GeometryValue =
     new GeometryValue(OGCGeometry.fromJson(json))
-  }
 
   /**
    * @param geoJson
    * @return A [[GeometryValue]] built from a geoJson string
    */
-  def fromGeoJson(geoJson: String): GeometryValue = {
+  def fromGeoJson(geoJson: String): GeometryValue =
     new GeometryValue(OGCGeometry.fromGeoJson(geoJson))
-  }
+
+  /**
+   * @param wkt
+   * @return A [[GeometryValue]] built from a WKT string
+   */
+  def fromString(wkt: String): GeometryValue =
+    new GeometryValue(OGCGeometry.fromText(wkt))
 
   /**
    * @param srid
@@ -202,9 +204,8 @@ object GeometryValue {
    * @param points
    * @return A [[GeometryValue]] enclosing a [[MultiPoint]]
    */
-  def multiPoint(srid: Int, points: (Double, Double)*): GeometryValue = {
+  def multiPoint(srid: Int, points: (Double, Double)*): GeometryValue =
     new GeometryValue(srid, GeometryBuilder.mkMultiPoint(points))
-  }
 
   /**
    * @param points

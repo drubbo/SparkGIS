@@ -23,7 +23,9 @@ object GeometryBuilder {
    * @return
    */
   def mkMultiPoint(points: Seq[(Double, Double)]): MultiPoint = {
-    points.map(mkPoint).foldLeft(new MultiPoint())(addPoint)
+    val rt = new MultiPoint()
+    points.map(mkPoint).foreach(rt.add)
+    rt
   }
 
   /**
@@ -31,7 +33,9 @@ object GeometryBuilder {
    * @return
    */
   def mkLine(points: Seq[(Double, Double)]): Polyline = {
-    addLine(new Polyline(), points)
+    val rt = new Polyline()
+    addLine(false)(rt, points)
+    rt
   }
 
   /**
@@ -40,7 +44,9 @@ object GeometryBuilder {
    * @return
    */
   def mkMultiLine(lines: Seq[Seq[(Double, Double)]]): Polyline = {
-    addLines(new Polyline(), lines)
+    val rt = new Polyline()
+    addLines(false)(rt, lines)
+    rt
   }
 
   /**
@@ -50,8 +56,8 @@ object GeometryBuilder {
    * @return
    */
   def mkPolygon(points: Seq[(Double, Double)]): Polygon = {
-    val rt = addLine(new Polygon(), points)
-    rt.closeAllPaths()
+    val rt = new Polygon()
+    addLine(true)(rt, points)
     rt
   }
 
@@ -62,44 +68,9 @@ object GeometryBuilder {
    * @return
    */
   def mkMultiPolygon(lines: Seq[Seq[(Double, Double)]]): Polygon = {
-    val rt = addLines(new Polygon(), lines)
-    rt.closeAllPaths()
+    val rt = new Polygon()
+    addLines(true)(rt, lines)
     rt
-  }
-
-  /**
-   * Adds a [[Point]] to a [[MultiPoint]]
-   * @param target
-   * @param toAdd
-   * @return the target [[MultiPoint]]
-   */
-  private def addPoint(target: MultiPoint, toAdd: Point): MultiPoint = {
-    target.add(toAdd)
-    target
-  }
-
-  /**
-   * Starts a new path in a [[MultiPath]] from the point provided
-   * @param target
-   * @param start
-   * @tparam T
-   * @return the target [[MultiPath]]
-   */
-  private def startSegment[T <: MultiPath](target: T, start: (Double, Double)): T = {
-    target.startPath(mkPoint(start))
-    target
-  }
-
-  /**
-   * Adds a segment to a [[MultiPath]] in current from its last point to the one provided
-   * @param target
-   * @param end
-   * @tparam T
-   * @return the target [[MultiPath]]
-   */
-  private def addSegment[T <: MultiPath](target: T, end: (Double, Double)): T = {
-    target.lineTo(mkPoint(end))
-    target
   }
 
   /**
@@ -109,8 +80,10 @@ object GeometryBuilder {
    * @tparam T
    * @return
    */
-  private def addLine[T <: MultiPath](target: T, points: Seq[(Double, Double)]): T = {
-    points.tail.foldLeft(startSegment(target, points.head))(addSegment)
+  private def addLine[T <: MultiPath](closed: Boolean)(target: T, points: Seq[(Double, Double)]): Unit = {
+    target.startPath(points.head._1, points.head._2)
+    points.tail.foreach(p => target.lineTo(p._1, p._2))
+    if (closed) target.closePathWithLine()
   }
 
   /**
@@ -120,8 +93,7 @@ object GeometryBuilder {
    * @tparam T
    * @return
    */
-  private def addLines[T <: MultiPath](target: T, lines: Seq[Seq[(Double, Double)]]): T = {
-    lines.foldLeft(target)(addLine)
-  }
+  private def addLines[T <: MultiPath](closed: Boolean)(target: T, lines: Seq[Seq[(Double, Double)]]): Unit =
+    lines.foreach(l => addLine(closed)(target, l))
 
 }

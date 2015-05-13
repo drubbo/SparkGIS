@@ -4,6 +4,7 @@ import java.io.CharArrayWriter
 
 import org.apache.spark.sql.types._
 import org.codehaus.jackson.JsonFactory
+import org.json.JSONException
 
 /**
  * User defined type for [[GeometryValue]] instances
@@ -39,7 +40,18 @@ class GeometryType extends UserDefinedType[GeometryValue] {
   override def deserialize(datum: Any): GeometryValue = {
     datum match {
       case g: GeometryValue => g
-      case s: String => GeometryValue.fromGeoJson(s)
+      case s: String =>
+        try {
+          GeometryValue.fromGeoJson(s)
+        } catch {
+          case _: JSONException =>
+            try {
+              GeometryValue.fromJson(s)
+            } catch {
+              case _: JSONException =>
+                GeometryValue.fromString(s)
+            }
+        }
       case r: Map[_, _] =>
         val writer = new CharArrayWriter()
         val gen = new JsonFactory().createJsonGenerator(writer)
