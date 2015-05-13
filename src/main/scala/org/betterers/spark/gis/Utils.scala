@@ -20,6 +20,15 @@ object Utils {
     points.map(coord).sum / points.size
 
   /**
+   * Returns an average coordinate of a set of weighted points
+   * @param coord
+   * @param points
+   * @return
+   */
+  def avgWeightCoordinate(coord: (Point => Double), points: (Seq[Point], Seq[Double])): Double =
+    points._1.map(coord).sum / points._2.sum
+
+  /**
    * @return Every point in an [[ESRIGeometry]]
    */
   def getPoints: ESRIGeometry => Seq[Point] = {
