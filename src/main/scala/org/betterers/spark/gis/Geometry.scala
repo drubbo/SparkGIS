@@ -1,7 +1,6 @@
 package org.betterers.spark.gis
 
-import com.esri.core.geometry.{GeometryCursor, SimpleGeometryCursor, SpatialReference}
-import com.esri.core.geometry.{Point, MultiPoint, Segment, Line, Polyline, Polygon, MultiVertexGeometry}
+import com.esri.core.geometry._
 import com.esri.core.geometry.ogc.{OGCConcreteGeometryCollection, OGCGeometry, OGCPoint}
 import org.apache.log4j.Logger
 import org.apache.spark.sql.types.SQLUserDefinedType
@@ -11,7 +10,7 @@ import scala.collection.JavaConversions
 /**
  * Class wrapping an [[ESRIGeometry]] representing values of [[GeometryType]]
  *
- * @author drubbo <ubik@gamezoo.it>
+ * @author Ubik <emiliano.leporati@gmail.com>
  */
 @SQLUserDefinedType(udt = classOf[GeometryType])
 class Geometry(val srid: Int, val geom: Seq[ESRIGeometry]) extends Serializable {
@@ -34,31 +33,72 @@ class Geometry(val srid: Int, val geom: Seq[ESRIGeometry]) extends Serializable 
   }
 
   /**
-   * Builds a [[Geometry]] from and ESRI [[OGCGeometry]]
-   * @param geom
-   */
-  def this(geom: OGCGeometry) = {
-    this(geom.SRID, {
-      def curToSeq(cur: GeometryCursor): Seq[ESRIGeometry] = {
-        cur.next() match {
-          case null => Nil
-          case g => g +: curToSeq(cur)
-        }
-      }
-      curToSeq(geom.getEsriGeometryCursor)
-    })
-  }
-
-  /**
    * [[OGCGeometry]] built from the enclosed [[ESRIGeometry]]
    */
   @transient
+  private[gis]
   lazy val ogc: OGCGeometry = {
     val sr = SpatialReference.create(srid)
     if (geom.isEmpty) new OGCPoint(new Point(), sr)
     else {
       val cursor = new SimpleGeometryCursor(geom.toArray)
       OGCGeometry.createFromEsriCursor(cursor, sr)
+    }
+  }
+
+  /**
+   * Collection of points for each enclosed geometry
+   */
+  @transient
+  private lazy val geomPoints: Seq[Seq[Point]] =
+    geom.map(Utils.getPoints)
+
+  /**
+   * Collection of every point in every enclosed geometry
+   */
+  @transient
+  private lazy val allPoints: Seq[Point] =
+    geomPoints.flatten
+
+
+  /**
+   * @note Geometry collections not supported
+   * @return centroid of the enclosed geometry
+   */
+  def centroid: Option[Point] = {
+    // average point of a sequence
+    def centroid(points: Seq[Point]): Point = {
+      val x = Utils.avgCoordinate(_.getX, points)
+      val y = Utils.avgCoordinate(_.getY, points)
+      new Point(x, y)
+    }
+    // centroid weighted by length / area
+    def pathCentroid[T <: MultiPath](geom: T, pathIndex: Int, weight: (Int => Double)): Point = {
+      val points = Seq.range(geom.getPathStart(pathIndex), geom.getPathEnd(pathIndex)).map(geom.getPoint)
+      val w = weight(pathIndex)
+      val x = Utils.avgCoordinate(_.getX, points) * w
+      val y = Utils.avgCoordinate(_.getY, points) * w
+      new Point(x, y)
+    }
+    // centroid of a single shape
+    def singleCentroid: ESRIGeometry => Point = {
+      case (g: Point) =>
+        g
+      case (_: Segment | _: MultiPoint) =>
+        centroid(geomPoints.head)
+      case g: Polyline =>
+        centroid(Seq.range(0, g.getPathCount).map(p => {
+          pathCentroid(g, p, g.calculatePathLength2D)
+        }))
+      case g: Polygon =>
+        centroid(Seq.range(0, g.getPathCount).map(p => {
+          pathCentroid(g, p, g.calculateRingArea2D)
+        }))
+    }
+
+    geom match {
+      case g +: Nil => Some(singleCentroid(g))
+      case _ => None
     }
   }
 
@@ -75,8 +115,7 @@ class Geometry(val srid: Int, val geom: Seq[ESRIGeometry]) extends Serializable 
    */
   def numberOfGeometries =
     geom match {
-      case (_: Point) +: Nil => 1
-      case (_: Line) +: Nil => 1
+      case (_: Point | _: Segment) +: Nil => 1
       case (m: MultiVertexGeometry) +: Nil => m.getPointCount
       case _ => geom.size
     }
@@ -104,29 +143,17 @@ class Geometry(val srid: Int, val geom: Seq[ESRIGeometry]) extends Serializable 
    * @return
    */
   private def getCoordinateBoundary(coord: (Point => Double), pred: ((Double, Double) => Boolean)) = {
-    def search: Seq[ESRIGeometry] => Double = {
-      case (x: Point) +: Nil =>
-        // first value
+    def eval: Seq[Point] => Double = {
+      case x +: Nil =>
+        // first candidate
         coord(x)
-      case (x: Point) +: tail =>
+      case x +: tail =>
         // get candidate from tail evaluation and return the best
-        val candidate = search(tail)
+        val candidate = eval(tail)
         val opponent = coord(x)
         if (pred(opponent, candidate)) opponent else candidate
-      case (x: Segment) +: tail =>
-        // expand the segment in two points and search
-        search(new Point(x.getStartX, x.getStartY) +: new Point(x.getEndX, x.getEndY) +: tail)
-      case (x: MultiVertexGeometry) +: tail =>
-        // expand each vertex and search
-        def expand: Int => Seq[ESRIGeometry] = {
-          case i if i < x.getPointCount =>
-            x.getPoint(i) +: expand(i + 1)
-          case _ =>
-            tail
-        }
-        search(expand(0))
     }
-    if (geom.isEmpty) None else Some(search(geom))
+    if (geom.isEmpty) None else Some(eval(allPoints))
   }
 
   /**
@@ -165,25 +192,42 @@ object Geometry {
   private val WGS84 = 4326
 
   /**
+   * Builds a [[Geometry]] from and ESRI [[OGCGeometry]]
+   * @param geom
+   */
+  private[gis]
+  def apply(geom: OGCGeometry) = {
+    new Geometry(geom.SRID, {
+      def curToSeq(cur: GeometryCursor): Seq[ESRIGeometry] = {
+        cur.next() match {
+          case null => Nil
+          case g => g +: curToSeq(cur)
+        }
+      }
+      curToSeq(geom.getEsriGeometryCursor)
+    })
+  }
+
+  /**
    * @param json
-   * @return A [[Geometry]] built from a json string
+   * @return A [[Geometry]] built from a json REST string
    */
   def fromJson(json: String): Geometry =
-    new Geometry(OGCGeometry.fromJson(json))
+    apply(OGCGeometry.fromJson(json))
 
   /**
    * @param geoJson
    * @return A [[Geometry]] built from a geoJson string
    */
   def fromGeoJson(geoJson: String): Geometry =
-    new Geometry(OGCGeometry.fromGeoJson(geoJson))
+    apply(OGCGeometry.fromGeoJson(geoJson))
 
   /**
    * @param wkt
    * @return A [[Geometry]] built from a WKT string
    */
   def fromString(wkt: String): Geometry =
-    new Geometry(OGCGeometry.fromText(wkt))
+    apply(OGCGeometry.fromText(wkt))
 
   /**
    * @param srid
@@ -284,7 +328,7 @@ object Geometry {
     val sr = SpatialReference.create(srid)
     val ogcGeoms = geometries.map(OGCGeometry.createFromEsriGeometry(_, sr))
     val geoColl = new OGCConcreteGeometryCollection(JavaConversions.seqAsJavaList(ogcGeoms), sr)
-    new Geometry(geoColl)
+    apply(geoColl)
   }
 
   /**

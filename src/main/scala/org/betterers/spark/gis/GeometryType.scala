@@ -5,12 +5,11 @@ import java.io.CharArrayWriter
 import org.apache.spark.Logging
 import org.apache.spark.sql.types._
 import org.codehaus.jackson.JsonFactory
-import org.json.JSONException
 
 /**
  * User defined type for [[Geometry]] instances
  *
- * @author drubbo <ubik@gamezoo.it>
+ * @author Ubik <emiliano.leporati@gmail.com>
  */
 class GeometryType extends UserDefinedType[Geometry] with Logging {
 
@@ -42,8 +41,10 @@ class GeometryType extends UserDefinedType[Geometry] with Logging {
     datum match {
       case g: Geometry => g
 
+      case s: UTF8String => deserialize(s.toString())
+
       case s: String =>
-        def tryOrElse[I,O](conversion: I => O, msg: String, alternative: I => O)(input: I): O = {
+        def tryOrElse[I, O](conversion: I => O, msg: String, alternative: I => O)(input: I): O = {
           try {
             conversion(input)
           } catch {
@@ -86,7 +87,7 @@ class GeometryType extends UserDefinedType[Geometry] with Logging {
         Geometry.fromGeoJson(json)
 
       case x =>
-        throw new IllegalArgumentException("Can't deserialize to GeometryValue: " + x)
+        throw new IllegalArgumentException("Can't deserialize to GeometryValue: " + x.getClass.getSimpleName + ":" + x)
     }
   }
 }

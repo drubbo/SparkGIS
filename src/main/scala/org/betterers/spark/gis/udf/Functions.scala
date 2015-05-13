@@ -7,7 +7,7 @@ import org.betterers.spark.gis.Geometry
 /**
  * GIS functions as UDFs
  *
- * @author drubbo <ubik@gamezoo.it>
+ * @author Ubik <emiliano.leporati@gmail.com>
  */
 object Functions {
 
@@ -19,7 +19,7 @@ object Functions {
   def ST_Boundary(geom: Geometry): Option[Geometry] =
     geom.ogc match {
       case c: OGCConcreteGeometryCollection => None
-      case g => Some(new Geometry(g.boundary()))
+      case g => Some(Geometry(g.boundary()))
     }
 
   /**
@@ -44,7 +44,7 @@ object Functions {
    */
   def ST_EndPoint(geom: Geometry): Option[Geometry] =
     geom.ogc match {
-      case line: OGCLineString => Some(new Geometry(line.endPoint()))
+      case line: OGCLineString => Some(Geometry(line.endPoint()))
       case _ => None
     }
 
@@ -53,7 +53,7 @@ object Functions {
    * @return The minimum bounding box for the supplied geometry
    */
   def ST_Envelope(geom: Geometry): Geometry =
-    new Geometry(geom.ogc.envelope())
+    Geometry(geom.ogc.envelope())
 
   /**
    * @param geom
@@ -62,7 +62,7 @@ object Functions {
    */
   def ST_ExteriorRing(geom: Geometry): Option[Geometry] =
     geom.ogc match {
-      case poly: OGCPolygon => Some(new Geometry(poly.exteriorRing()))
+      case poly: OGCPolygon => Some(Geometry(poly.exteriorRing()))
       case _ => None
     }
 
@@ -75,7 +75,7 @@ object Functions {
    */
   def ST_GeometryN(geom: Geometry, n: Int): Option[Geometry] =
     geom.ogc match {
-      case coll: OGCGeometryCollection => Some(new Geometry(coll.geometryN(n)))
+      case coll: OGCGeometryCollection => Some(Geometry(coll.geometryN(n)))
       case _ => None
     }
 
@@ -94,7 +94,7 @@ object Functions {
    */
   def ST_InteriorRingN(geom: Geometry, n: Int): Option[Geometry] =
     geom.ogc match {
-      case poly: OGCPolygon => Some(new Geometry(poly.interiorRingN(n)))
+      case poly: OGCPolygon => Some(Geometry(poly.interiorRingN(n)))
       case _ => None
     }
 
@@ -105,7 +105,7 @@ object Functions {
   def ST_IsClosed(geom: Geometry): Boolean =
     geom.ogc match {
       case line: OGCCurve => line.isClosed
-      case multi: OGCMultiCurve => multi.isClosed
+      case line: OGCMultiCurve => line.isClosed
       case _ => false
     }
 
@@ -221,7 +221,7 @@ object Functions {
    */
   def ST_StartPoint(geom: Geometry): Option[Geometry] =
     geom.ogc match {
-      case line: OGCLineString => Some(new Geometry(line.startPoint()))
+      case line: OGCLineString => Some(Geometry(line.startPoint()))
       case _ => None
     }
 
@@ -305,5 +305,90 @@ object Functions {
    */
   def ST_ZMin(geom: Geometry): Option[Double] =
     geom.minCoordinate(_.getZ)
+
+  /**
+   * @param geom
+   * @return the area of the geometry if it is a POLYGON or MULTIPOLYGON
+   */
+  def ST_Area(geom: Geometry): Option[Double] =
+    geom.ogc match {
+      case s: OGCSurface => Some(s.area())
+      case s: OGCMultiSurface => Some(s.area())
+      case _ => None
+    }
+
+  /**
+   * @param geom
+   * @return geometry centroid
+   */
+  def ST_Centroid(geom: Geometry): Option[Geometry] =
+  // NOTE still not supported by ESRI library
+  // NOTE should support also other geometry types
+  /* geom.ogc match {
+    case c: OGCSurface => Some(Geometry(c.centroid()))
+    case c: OGCMultiSurface => Some(Geometry(c.centroid()))
+    case _ => None
+  } */
+    geom.centroid.map(new Geometry(_))
+
+  /**
+   * @param geomA
+   * @param geomB
+   * @return true if geomB is contained inside geomA
+   */
+  def ST_Contains(geomA: Geometry, geomB: Geometry): Boolean =
+    geomA.ogc.contains(geomB.ogc)
+
+  /**
+   * @param geomA
+   * @param geomB
+   * @return true if the supplied geometries have some, but not all, interior points in common
+   */
+  def ST_Crosses(geomA: Geometry, geomB: Geometry): Boolean =
+    geomA.ogc.crosses(geomB.ogc)
+
+  /**
+   * @param geomA
+   * @param geomB
+   * @return true if the supplied geometries do not share any space together
+   */
+  def ST_Disjoint(geomA: Geometry, geomB: Geometry): Boolean =
+    geomA.ogc.disjoint(geomB.ogc)
+
+  /**
+   * @param geomA
+   * @param geomB
+   * @return the 2-dimensional cartesian minimum distance between two geometries in projected units
+   */
+  def ST_Distance(geomA: Geometry, geomB: Geometry): Double =
+    geomA.ogc.distance(geomB.ogc)
+
+  /**
+   * @param geomA
+   * @param geomB
+   * @return true if the given geometries represent the same geometry
+   */
+  def ST_Equals(geomA: Geometry, geomB: Geometry): Boolean =
+    geomA.ogc.equals(geomB)
+
+  /**
+   * @param geomA
+   * @param geomB
+   * @return true if the given geometries share any portion of space (are not disjoint)
+   */
+  def ST_Intersects(geomA: Geometry, geomB: Geometry): Boolean =
+    geomA.ogc.intersects(geomB.ogc)
+
+  /**
+   * @param geom
+   * @return the 2-dimensional length of a LINESTRING or MULTILINESTRING
+   */
+  def ST_Length(geom: Geometry): Option[Double] =
+    geom.ogc match {
+      case l: OGCCurve => Some(l.length)
+      case l: OGCMultiCurve => Some(l.length)
+      case _ => None
+    }
+
 
 }
