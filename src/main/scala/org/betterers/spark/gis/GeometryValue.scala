@@ -1,10 +1,9 @@
 package org.betterers.spark.gis
 
 import com.esri.core.geometry._
-import com.esri.core.geometry.ogc.{OGCConcreteGeometryCollection, OGCMultiPoint, OGCGeometryCollection, OGCGeometry}
+import com.esri.core.geometry.ogc.{OGCConcreteGeometryCollection, OGCGeometry}
 import org.apache.log4j.Logger
 import org.apache.spark.sql.types.SQLUserDefinedType
-import org.codehaus.jackson.JsonFactory
 
 import scala.collection.JavaConversions
 
@@ -15,6 +14,7 @@ import scala.collection.JavaConversions
  */
 @SQLUserDefinedType(udt = classOf[GeometryType])
 class GeometryValue(val srid: Int, val geom: Seq[Geometry]) extends Serializable {
+
   /**
    * Builds a [[GeometryValue]] from an ESRI [[Geometry]]
    * @param srid
@@ -188,6 +188,7 @@ object GeometryValue {
    */
   def point(srid: Int, xy: (Double, Double)): GeometryValue =
     new GeometryValue(srid, GeometryBuilder.mkPoint(xy))
+
   /**
    * @param xy
    * @return A [[GeometryValue]] enclosing a [[Point]] with default SRID
@@ -203,6 +204,7 @@ object GeometryValue {
   def multiPoint(srid: Int, points: (Double, Double)*): GeometryValue = {
     new GeometryValue(srid, GeometryBuilder.mkMultiPoint(points))
   }
+
   /**
    * @param points
    * @return A [[GeometryValue]] enclosing a [[MultiPoint]] with default SRID
@@ -217,6 +219,7 @@ object GeometryValue {
    */
   def line(srid: Int, points: (Double, Double)*): GeometryValue =
     new GeometryValue(srid, GeometryBuilder.mkLine(points))
+
   /**
    * @param points
    * @return A [[GeometryValue]] enclosing a [[Polyline]] with a single path and default SRID
@@ -231,6 +234,7 @@ object GeometryValue {
    */
   def multiLine(srid: Int, lines: Seq[(Double, Double)]*): GeometryValue =
     new GeometryValue(srid, GeometryBuilder.mkMultiLine(lines))
+
   /**
    * @param lines
    * @return A [[GeometryValue]] enclosing a [[Polyline]] with multiple paths and default SRID
@@ -245,6 +249,7 @@ object GeometryValue {
    */
   def polygon(srid: Int, points: (Double, Double)*): GeometryValue =
     new GeometryValue(srid, GeometryBuilder.mkPolygon(points))
+
   /**
    * @param points
    * @return A [[GeometryValue]] enclosing a [[Polygon]] with a single ring and default SRID
@@ -259,6 +264,7 @@ object GeometryValue {
    */
   def multiPolygon(srid: Int, lines: Seq[(Double, Double)]*): GeometryValue =
     new GeometryValue(srid, GeometryBuilder.mkMultiPolygon(lines))
+
   /**
    * @param lines
    * @return A [[GeometryValue]] enclosing a [[Polygon]] with multiple rings and default SRID

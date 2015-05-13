@@ -93,7 +93,7 @@ object Functions {
     geom.ogc match {
       case poly: OGCPolygon =>
         new GeometryValue(poly.interiorRingN(n))
-      case _=>
+      case _ =>
         null
     }
 
