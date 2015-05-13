@@ -495,4 +495,32 @@ object Functions {
    */
   def ST_Relate(geomA: Geometry, geomB: Geometry, matrix: String): Boolean =
     geomA.ogc.relate(geomB.ogc, matrix)
+
+  /**
+   * @param geom
+   * @return WKB representation of a geometry
+   */
+  def ST_AsBinary(geom: Geometry): Array[Byte] =
+    geom.toBinary
+
+  /**
+   * @param geom
+   * @return WKB representation of a geometry
+   */
+  def ST_AsEWKB(geom: Geometry): Array[Byte] =
+    geom.toBinary
+
+  /**
+   * @param geom
+   * @return WKT representation of a geometry
+   */
+  def ST_AsEWKT(geom: Geometry): String =
+    geom.toString
+
+  /**
+   * @param geom
+   * @return GeoJSON representation of a geometry
+   */
+  def ST_AsGeoJSON(geom: Geometry): String =
+    geom.toGeoJson
 }
