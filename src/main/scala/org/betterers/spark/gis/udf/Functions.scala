@@ -70,7 +70,7 @@ object Functions {
    * @param geom
    * @param n
    * @return the 1-based Nth geometry if the geometry is a GEOMETRYCOLLECTION, (MULTI)POINT, (MULTI)LINESTRING,
-   *         MULTICURVE or (MULTI)POLYGON, POLYHEDRALSURFACE;
+   *         MULTICURVE or (MULTI)POLYGON;
    *         None otherwise
    */
   def ST_GeometryN(geom: Geometry, n: Int): Option[Geometry] =
@@ -168,9 +168,9 @@ object Functions {
     def count(cur: GeometryCursor): Int = {
       cur.next() match {
         case null => 0
-        case g: MultiVertexGeometry => g.getPointCount + count(cur)
-        case g: Line => 2 + count(cur)
         case g: Point => 1 + count(cur)
+        case g: Line => 2 + count(cur)
+        case g: MultiVertexGeometry => g.getPointCount + count(cur)
       }
     }
     count(geom.ogc.getEsriGeometryCursor)
@@ -334,7 +334,7 @@ object Functions {
   /**
    * @param geomA
    * @param geomB
-   * @return true if geomB is contained inside geomA
+   * @return true if geometry B is contained inside geometry A
    */
   def ST_Contains(geomA: Geometry, geomB: Geometry): Boolean =
     geomA.ogc.contains(geomB.ogc)
@@ -390,5 +390,109 @@ object Functions {
       case _ => None
     }
 
+  /**
+   * @param geomA
+   * @param geomB
+   * @return true if the geometries share space, are of the same dimension,
+   *         but are not completely contained by each other
+   */
+  def ST_Overlaps(geomA: Geometry, geomB: Geometry): Boolean =
+    geomA.ogc.overlaps(geomB.ogc)
 
+  /**
+   * @param geomA
+   * @return a POINT guaranteed to lie on the surface
+   */
+  def ST_PointOnSurface(geomA: Geometry): Option[Geometry] =
+    geomA.ogc match {
+      case s: OGCSurface => Some(Geometry(s.pointOnSurface()))
+      case s: OGCMultiSurface => Some(Geometry(s.pointOnSurface()))
+      case _ => None
+    }
+
+  /**
+   * @param geomA
+   * @param geomB
+   * @return true if the geometries have at least one point in common, but their interiors do not intersect
+   */
+  def ST_Touches(geomA: Geometry, geomB: Geometry): Boolean =
+    geomA.ogc.overlaps(geomB.ogc)
+
+  /**
+   * @param geomA
+   * @param geomB
+   * @return true if geometry A is completely inside geometry B
+   */
+  def ST_Within(geomA: Geometry, geomB: Geometry): Boolean =
+    geomA.ogc.overlaps(geomB.ogc)
+
+  /**
+   * @param geom
+   * @param distance
+   * @return a geometry that represents all points whose distance from this geometry is less than or equal to distance
+   */
+  def ST_Buffer(geom: Geometry, distance: Double): Geometry =
+    Geometry(geom.ogc.buffer(distance))
+
+  /**
+   * @param geom
+   * @return minimum convex geometry that encloses all geometries within the set
+   */
+  def ST_ConvexHull(geom: Geometry): Geometry =
+    Geometry(geom.ogc.convexHull())
+
+  /**
+   * @param geomA
+   * @param geomB
+   * @return a geometry that represents that part of geometry A that does not intersect with geometry B
+   */
+  def ST_Difference(geomA: Geometry, geomB: Geometry): Geometry =
+    Geometry(geomA.ogc.difference(geomB.ogc))
+
+  /**
+   * @param geomA
+   * @param geomB
+   * @return geometry that represents the shared portion of two geometries
+   */
+  def ST_Intersection(geomA: Geometry, geomB: Geometry): Geometry =
+    Geometry(geomA.ogc.intersection(geomB.ogc))
+
+  /**
+   * @param geom
+   * @return Returns a simplified version of the given geometry
+   */
+  def ST_Simplify(geom: Geometry): Geometry =
+    geom.ogc match {
+      case g: OGCConcreteGeometryCollection =>
+        val x: Seq[Geometry] = geom.geometries.map(new Geometry(_))
+        Geometry.aggregate(x.map(ST_Simplify): _*)
+      case g =>
+        Geometry(g.makeSimple)
+    }
+
+  /**
+   * @param geomA
+   * @param geomB
+   * @return a geometry that represents the portions of the given geometries that do not intersect
+   */
+  def ST_SymDifference(geomA: Geometry, geomB: Geometry): Geometry =
+    Geometry(geomA.ogc.symDifference(geomB.ogc))
+
+  /**
+   * @param geomA
+   * @param geomB
+   * @return a geometry that represents the point set union of the given geometries
+   */
+  def ST_Union(geomA: Geometry, geomB: Geometry): Geometry =
+    Geometry(geomA.ogc.union(geomB.ogc))
+
+  /**
+   * @param geomA
+   * @param geomB
+   * @param matrix
+   * @return true if this geometry A is spatially related to geometry B, by testing for intersections
+   *         as specified by the values in the intersection matrix
+   */
+  def ST_Relate(geomA: Geometry, geomB: Geometry, matrix: String): Boolean =
+    geomA.ogc.relate(geomB.ogc, matrix)
 }
