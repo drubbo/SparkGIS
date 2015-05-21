@@ -30,8 +30,8 @@ Simply use the *GeometryType* instance as a type:
 ## Creating RDDs
 The *GeometryType* is able to produce *Geometry* values from any supported serialization format ("*WKB*, *WKT*, *GeoJSON*) as well as from schema-less JSON RDDs. So simply load your data and apply the schema as shown below:
 ```
-  // ... using GeoJSON ...
-	val data = Seq(
+  // using GeoJSON
+  val data = Seq(
     "{\"id\":1,\"geo\":{\"type\":\"Point\",\"coordinates\":[1,1]}}",
     "{\"id\":2,\"geo\":{\"type\":\"LineString\",\"coordinates\":[[12,13],[15,20]]}}",
     "{\"id\":3,\"geo\":{\"type\":\"MultiLineString\",\"coordinates\":[[[12,13],[15,20]],[[7,9],[11,17]]]}}",
@@ -40,7 +40,7 @@ The *GeometryType* is able to produce *Geometry* values from any supported seria
   val rdd = sc.parallelize(data)
   val df = sqlContext.jsonRDD(rdd, schema)
 
-  // ... or other means
+  // or other means
   val data = Seq(
     Row(1, Geometry.point(1,1)),
     Row(2, Geometry.fromString("MULTIPOINT ((1 1), (2 2))"),
@@ -60,5 +60,8 @@ Moreover, they can be registered in the *SQLContext* and used inside *SparkSQL* 
 ```
 
 ## Credits
-The *Geometry* value class is written on top of the [ESRI Geometry](https://github.com/Esri/geometry-api-java) library, while UDFs aim to adhere to [OGC Simple Feature Access](http://www.opengeospatial.org/standards/sfs) recommendation.
+The *Geometry* value class is written on top of the [ESRI Geometry](/Esri/geometry-api-java) library, while UDFs aim to adhere to [OGC Simple Feature Access](http://www.opengeospatial.org/standards/sfs) recommendation.
 When some of them were unavailable from the ESRI library, those have been implemented mimicking [PostGIS](http://postgis.net/docs/manual-2.1/reference.html) behaviour.
+
+## Remarks
+*Geometry* values in order to work within jsonRDDs in Spark 1.3/1.4 need [a SparkSQL patch](https://github.com/apache/spark/pull/6193)
