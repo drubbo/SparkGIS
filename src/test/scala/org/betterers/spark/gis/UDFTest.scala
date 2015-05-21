@@ -1,5 +1,8 @@
 package org.betterers.spark.gis
 
+import org.apache.spark.sql.SQLContext
+import org.apache.spark.sql.test.TestSQLContext._
+import org.apache.spark.sql.types.{IntegerType, StructField, StructType}
 import org.betterers.spark.gis.udf.Functions
 import org.scalatest.FunSuite
 
@@ -53,5 +56,28 @@ class UDFTest extends FunSuite {
         Functions.ST_CoordDim(g)
       }
     })
+  }
+
+  test("UDF in SQL") {
+    val schema = StructType(Seq(
+      StructField("id", IntegerType),
+      StructField("geo", GeometryType.Instance)
+    ))
+    val jsons = Map(
+      (1, "{\"type\":\"Point\",\"coordinates\":[1,1]}}"),
+      (2, "{\"type\":\"LineString\",\"coordinates\":[[12,13],[15,20]]}}")
+    )
+    val rdd = sparkContext.parallelize(Seq(
+      "{\"id\":1,\"geo\":" + jsons(1) + "}",
+      "{\"id\":2,\"geo\":" + jsons(2) + "}"
+    ))
+    rdd.name = "PROVA"
+    val sqlContext = new SQLContext(sparkContext)
+    val df = sqlContext.jsonRDD(rdd, schema)
+    df.registerTempTable("PROVA")
+    Functions.register(sqlContext)
+    assertResult(Array(2,2)) {
+      sqlContext.sql("SELECT ST_CoordDim(geo) FROM PROVA").collect().map(_.get(0))
+    }
   }
 }

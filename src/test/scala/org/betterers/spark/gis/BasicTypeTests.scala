@@ -9,7 +9,6 @@ import org.scalatest.FunSuite
  * Basic tests for GIS UDTs
  */
 class BasicTypeTests extends FunSuite {
-  val sqlContext = new SQLContext(sparkContext)
   val schema = StructType(Seq(
     StructField("id", IntegerType),
     StructField("geo", GeometryType.Instance)
@@ -143,7 +142,7 @@ class BasicTypeTests extends FunSuite {
       "{\"id\":1,\"geo\":" + jsons(1) + "}",
       "{\"id\":2,\"geo\":" + jsons(2) + "}"
     ))
-    val df = sqlContext.jsonRDD(rdd, schema)
+    val df = jsonRDD(rdd, schema)
     assert(df.collect().mkString(",") == "[1,POINT (1 1)],[2,LINESTRING (12 13, 15 20)]")
   }
 
@@ -153,7 +152,7 @@ class BasicTypeTests extends FunSuite {
       Row(2, Geometry.fromGeoJson(jsons(2)))
     )
     val rdd = sparkContext.parallelize(data)
-    val df = sqlContext.createDataFrame(rdd, schema)
+    val df = createDataFrame(rdd, schema)
     assert(df.collect().mkString(",") == "[1,POINT (1 1)],[2,LINESTRING (12 13, 15 20)]")
   }
 }
