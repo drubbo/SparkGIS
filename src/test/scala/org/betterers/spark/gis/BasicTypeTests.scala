@@ -14,9 +14,9 @@ class BasicTypeTests extends FunSuite {
     StructField("geo", GeometryType.Instance)
   ))
   val jsons = Map(
-    (1, "{\"type\":\"Point\",\"coordinates\":[1,1]}}"),
-    (2, "{\"type\":\"LineString\",\"coordinates\":[[12,13],[15,20]]}}"),
-    (3, "{\"type\":\"MultiLineString\",\"coordinates\":[[[12,13],[15,20]],[[7,9],[11,17]]]}}")
+    (1, "{\"type\":\"Point\",\"coordinates\":[1,1]}"),
+    (2, "{\"type\":\"LineString\",\"coordinates\":[[12,13],[15,20]]}"),
+    (3, "{\"type\":\"MultiLineString\",\"coordinates\":[[[12,13],[15,20]],[[7,9],[11,17]]]}")
   )
 
   test("Factory methods") {
