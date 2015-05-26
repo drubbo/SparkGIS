@@ -401,11 +401,11 @@ object Functions {
     geomA.ogc.overlaps(geomB.ogc)
 
   /**
-   * @param geomA
+   * @param geom
    * @return a POINT guaranteed to lie on the surface
    */
-  def ST_PointOnSurface(geomA: Geometry): Option[Geometry] =
-    geomA.ogc match {
+  def ST_PointOnSurface(geom: Geometry): Option[Geometry] =
+    geom.ogc match {
       case s: OGCSurface => Some(Geometry(s.pointOnSurface()))
       case s: OGCMultiSurface => Some(Geometry(s.pointOnSurface()))
       case _ => None
@@ -512,6 +512,27 @@ object Functions {
     geom.toBinary
 
   /**
+   * @param wkb
+   * @return a geometry decoded from the input WKB
+   */
+  def ST_GeomFromBinary(wkb: Array[Byte]): Geometry =
+    Geometry.fromBinary(wkb)
+
+  /**
+   * @param wkb
+   * @return a geometry decoded from the input WKB
+   */
+  def ST_GeomFromEWKB(wkb: Array[Byte]): Geometry =
+    Geometry.fromBinary(wkb)
+
+  /**
+   * @param geom
+   * @return WKT representation of a geometry
+   */
+  def ST_AsText(geom: Geometry): String =
+    geom.toString
+
+  /**
    * @param geom
    * @return WKT representation of a geometry
    */
@@ -519,11 +540,32 @@ object Functions {
     geom.toString
 
   /**
+   * @param wkt
+   * @return a geometry decoded from the input WKT
+   */
+  def ST_GeomFromText(wkt: String): Geometry =
+    Geometry.fromString(wkt)
+
+  /**
+   * @param wkt
+   * @return a geometry decoded from the input WKT
+   */
+  def ST_GeomFromEWKT(wkt: String): Geometry =
+    Geometry.fromString(wkt)
+
+  /**
    * @param geom
    * @return GeoJSON representation of a geometry
    */
   def ST_AsGeoJSON(geom: Geometry): String =
     geom.toGeoJson
+
+  /**
+   * @param json
+   * @return a geometry decoded from the input GeoJSON
+   */
+  def ST_GeomFromGeoJSON(json: String): Geometry =
+    Geometry.fromGeoJson(json)
 
   /**
    * Registers every GIS function in a SQL context
@@ -585,7 +627,13 @@ object Functions {
     ctx.udf.register("ST_Relate", ST_Relate(_: Geometry, _: Geometry, _: String))
     ctx.udf.register("ST_AsBinary", ST_AsBinary(_: Geometry))
     ctx.udf.register("ST_AsEWKB", ST_AsEWKB(_: Geometry))
+    ctx.udf.register("ST_AsText", ST_AsText(_: Geometry))
     ctx.udf.register("ST_AsEWKT", ST_AsEWKT(_: Geometry))
     ctx.udf.register("ST_AsGeoJSON", ST_AsGeoJSON(_: Geometry))
+    ctx.udf.register("ST_GeomFromBinary", ST_GeomFromBinary(_: Array[Byte]))
+    ctx.udf.register("ST_GeomFromEWKB", ST_GeomFromEWKB(_: Array[Byte]))
+    ctx.udf.register("ST_GeomFromText", ST_GeomFromText(_: String))
+    ctx.udf.register("ST_GeomFromEWKT", ST_GeomFromEWKT(_: String))
+    ctx.udf.register("ST_GeomFromGeoJSON", ST_GeomFromGeoJSON(_: String))
   }
 }
