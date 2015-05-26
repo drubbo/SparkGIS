@@ -125,7 +125,10 @@ class BasicTypeTests extends FunSuite {
       // NOTE not sure what this sould return
       coll.toJson
     }
-    println(coll.toGeoJson)
+    intercept[NullPointerException] {
+      // FIXME update test when new version of ESRI lib available
+      coll.toGeoJson
+    }
   }
 
   test("Deserialize") {
