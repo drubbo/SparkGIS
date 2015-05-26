@@ -133,6 +133,7 @@ class Geometry(val srid: Int, private[gis] val geometries: Seq[ESRIGeometry]) ex
    * @return maximum coordinate
    *         None for empty geometry
    */
+  private[gis]
   def maxCoordinate(coord: Point => Double): Option[Double] =
     getCoordinateBoundary(coord, _ > _)
 
@@ -141,6 +142,7 @@ class Geometry(val srid: Int, private[gis] val geometries: Seq[ESRIGeometry]) ex
    * @return minimum coordinate
    *         None for empty geometry
    */
+  private[gis]
   def minCoordinate(coord: Point => Double): Option[Double] =
     getCoordinateBoundary(coord, _ < _)
 
