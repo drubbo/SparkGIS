@@ -4,14 +4,16 @@
     <groupId>org.betterers</groupId>
     <artifactId>spark-gis</artifactId>
     <name>SparkGIS</name>
-    <version>0.0.1-SNAPSHOT</version>
+    <version>0.1.0</version>
     <packaging>jar</packaging>
 
     <properties>
         <test.output.directory>${basedir}/test-output</test.output.directory>
         <test.log.directory>${basedir}/logs</test.log.directory>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <spark.version>1.4.0-SNAPSHOT</spark.version>
+        <spark.version>1.4.0</spark.version>
+        <scala.version>2.10.4</scala.version>
+        <scala.binary.version>2.10</scala.binary.version>
         <log4j.version>1.2.17</log4j.version>
         <esri.geometry.version>1.2.1</esri.geometry.version>
         <org.scalatest.version>2.2.4</org.scalatest.version>
@@ -32,19 +34,19 @@
         </dependency>
         <dependency>
             <groupId>org.apache.spark</groupId>
-            <artifactId>spark-core_2.10</artifactId>
+            <artifactId>spark-core_${scala.binary.version}</artifactId>
             <version>${spark.version}</version>
             <scope>compile</scope>
         </dependency>
         <dependency>
             <groupId>org.apache.spark</groupId>
-            <artifactId>spark-catalyst_2.10</artifactId>
+            <artifactId>spark-catalyst_${scala.binary.version}</artifactId>
             <version>${spark.version}</version>
             <scope>compile</scope>
         </dependency>
         <dependency>
             <groupId>org.apache.spark</groupId>
-            <artifactId>spark-sql_2.10</artifactId>
+            <artifactId>spark-sql_${scala.binary.version}</artifactId>
             <version>${spark.version}</version>
             <scope>compile</scope>
         </dependency>
@@ -62,7 +64,7 @@
         </dependency>
         <dependency>
             <groupId>org.scalatest</groupId>
-            <artifactId>scalatest_2.10</artifactId>
+            <artifactId>scalatest_${scala.binary.version}</artifactId>
             <version>${org.scalatest.version}</version>
             <scope>test</scope>
         </dependency>
@@ -70,27 +72,26 @@
     <build>
         <plugins>
             <plugin>
-                <groupId>org.scala-tools</groupId>
-                <artifactId>maven-scala-plugin</artifactId>
+                <groupId>net.alchim31.maven</groupId>
+                <artifactId>scala-maven-plugin</artifactId>
+                <configuration>
+                    <scalaCompatVersion>${scala.binary.version}</scalaCompatVersion>
+                    <scalaVersion>${scala.version}</scalaVersion>
+                </configuration>
                 <executions>
                     <execution>
-                        <id>compile</id>
-                        <goals>
-                            <goal>compile</goal>
-                        </goals>
-                        <phase>compile</phase>
-                    </execution>
-                    <execution>
-                        <id>test-compile</id>
-                        <goals>
-                            <goal>testCompile</goal>
-                        </goals>
-                        <phase>test-compile</phase>
-                    </execution>
-                    <execution>
+                        <id>scala-compile-first</id>
                         <phase>process-resources</phase>
                         <goals>
+                            <goal>add-source</goal>
                             <goal>compile</goal>
+                        </goals>
+                    </execution>
+                    <execution>
+                        <id>scala-test-compile</id>
+                        <phase>process-test-resources</phase>
+                        <goals>
+                            <goal>testCompile</goal>
                         </goals>
                     </execution>
                 </executions>
@@ -116,7 +117,6 @@
                 <configuration>
                     <reportsDirectory>${project.build.directory}/surefire-reports</reportsDirectory>
                     <junitxml>.</junitxml>
-                    <filereports>WDF TestSuite.txt</filereports>
                 </configuration>
                 <executions>
                     <execution>
