@@ -34,7 +34,7 @@ object Utils {
   def getPoints: ESRIGeometry => Seq[Point] = {
     case x: Point => Seq(x)
     case x: Segment => Seq(new Point(x.getStartX, x.getStartY), new Point(x.getEndX, x.getEndY))
-    case x: MultiVertexGeometry => Seq.range(0, x.getPointCount - 1).map(x.getPoint)
+    case x: MultiVertexGeometry => Seq.range(0, x.getPointCount).map(x.getPoint)
   }
 
   /**
@@ -47,4 +47,11 @@ object Utils {
       Math.sqrt(dx * dx + dy * dy) + getLength(b +: tail)
     case _ => 0
   }
+
+  /**
+   * @param p
+   * @return Coordinates of a [[Point]] as a pair
+   */
+  def getCoordinates(p: Point): (Double, Double) =
+    (p.getX, p.getY)
 }

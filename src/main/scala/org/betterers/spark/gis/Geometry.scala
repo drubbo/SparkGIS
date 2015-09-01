@@ -86,6 +86,7 @@ class Geometry(val srid: Int, private[gis] val geometries: Seq[ESRIGeometry]) ex
       val points = Seq.range(geom.getPathStart(pathIndex), geom.getPathEnd(pathIndex)).map(geom.getPoint)
       val x = Utils.avgCoordinate(_.getX, points) * weight
       val y = Utils.avgCoordinate(_.getY, points) * weight
+      println(s"Centroid of $points weight $weight")
       (new Point(x, y), weight)
     }
     // centroid of a single shape
@@ -153,17 +154,8 @@ class Geometry(val srid: Int, private[gis] val geometries: Seq[ESRIGeometry]) ex
    * @return
    */
   private def getCoordinateBoundary(coord: (Point => Double), pred: ((Double, Double) => Boolean)) = {
-    def eval: Seq[Point] => Double = {
-      case x +: Nil =>
-        // first candidate
-        coord(x)
-      case x +: tail =>
-        // get candidate from tail evaluation and return the best
-        val candidate = eval(tail)
-        val opponent = coord(x)
-        if (pred(opponent, candidate)) opponent else candidate
-    }
-    if (geometries.isEmpty) None else Some(eval(allPoints))
+    if (geometries.isEmpty) None
+    else Some(allPoints.map(coord).reduceLeft((a, b) => if (pred(a, b)) a else b))
   }
 
   /**
