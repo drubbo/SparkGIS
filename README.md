@@ -61,8 +61,9 @@ Moreover, they can be registered in the *SQLContext* and used inside *SparkSQL* 
 
 ## Credits
 The *Geometry* value class is written on top of the [ESRI Geometry](/Esri/geometry-api-java) library.
+
 UDFs aim to adhere to [OGC Simple Feature Access](http://www.opengeospatial.org/standards/sfs) recommendation.
 When some of them were unavailable from the ESRI library, those have been implemented mimicking [PostGIS](http://postgis.net/docs/manual-2.1/reference.html) behaviour.
 
 ## Remarks
-In order to work within jsonRDDs in Spark 1.3/1.4, *Geometry* values need [a SparkSQL patch](https://github.com/apache/spark/pull/6193).
+In order to work within jsonRDDs, Spark 1.4 is needed.
