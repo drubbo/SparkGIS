@@ -7,6 +7,7 @@ import org.apache.spark.Logging
 import org.apache.spark.sql.types._
 import org.codehaus.jackson.JsonFactory
 
+import scala.language.postfixOps
 import scala.util.Try
 
 /** User defined type for [[Geometry]] instances
@@ -24,8 +25,8 @@ class GeometryType extends UserDefinedType[Geometry] with Logging {
     obj match {
       case g: Geometry =>
         g.toGeoJson
-      case x =>
-        throw new IllegalArgumentException("Invalid GeometryValue value to serialize: " + x)
+      case _ =>
+        throw new IllegalArgumentException(s"Invalid Geometry value to serialize: $obj")
     }
   }
 
@@ -43,20 +44,15 @@ class GeometryType extends UserDefinedType[Geometry] with Logging {
       case b: ByteBuffer => Geometry.fromBinary(b)
 
       case s: String =>
-        def tryOrElse[I, O](conversion: I => O, msg: String, alternative: I => O)(input: I): O = {
-          try {
-            conversion(input)
-          } catch {
-            case e: Throwable =>
-              logWarning(msg, e)
-              alternative(input)
-          }
-        }
-        tryOrElse(
-          Geometry.fromGeoJson,
-          "Not a GeoJSON", tryOrElse(
-            Geometry.fromJson,
-            "Not a REST JSON", Geometry.fromString))(s)
+        Try {
+          Geometry.fromGeoJson(s)
+        } orElse {
+          logWarning("Not a GeoJSON")
+          Try(Geometry.fromJson(s))
+        } orElse {
+          logWarning("Not a REST JSON")
+          Try(Geometry.fromString(s))
+        } get
 
       case r: Map[_, _] =>
         val writer = new CharArrayWriter()
@@ -86,7 +82,7 @@ class GeometryType extends UserDefinedType[Geometry] with Logging {
         Geometry.fromGeoJson(json)
 
       case x =>
-        throw new IllegalArgumentException("Can't deserialize to GeometryValue: " + x.getClass.getSimpleName + ":" + x)
+        throw new IllegalArgumentException(s"Can't deserialize to Geometry: ${x.getClass.getSimpleName}: $x")
     }
   }
 }
