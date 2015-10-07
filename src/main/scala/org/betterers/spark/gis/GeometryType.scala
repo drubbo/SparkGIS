@@ -7,8 +7,9 @@ import org.apache.spark.Logging
 import org.apache.spark.sql.types._
 import org.codehaus.jackson.JsonFactory
 
-/**
- * User defined type for [[Geometry]] instances
+import scala.util.Try
+
+/** User defined type for [[Geometry]] instances
  *
  * @author Ubik <emiliano.leporati@gmail.com>
  */
@@ -18,11 +19,7 @@ class GeometryType extends UserDefinedType[Geometry] with Logging {
 
   override def userClass: Class[Geometry] = classOf[Geometry]
 
-  /**
-   * Translates a [[Geometry]] to a geoJson [[String]]
-   * @param obj
-   * @return
-   */
+  /** Translates a [[Geometry]] to a GeoJSON [[String]] */
   override def serialize(obj: Any): String = {
     obj match {
       case g: Geometry =>
@@ -35,8 +32,6 @@ class GeometryType extends UserDefinedType[Geometry] with Logging {
   /**
    * Translates a [[Geometry]], a [[String]] containing a GeoJSON, or a [[Map]] obtained
    * during JSON deserialization to a [[Geometry]]
-   * @param datum
-   * @return
    */
   override def deserialize(datum: Any): Geometry = {
     datum match {
@@ -96,9 +91,7 @@ class GeometryType extends UserDefinedType[Geometry] with Logging {
   }
 }
 
-/**
- * Default [[GeometryType]] instance
- */
+/** Default [[GeometryType]] instance */
 object GeometryType {
 
   val Instance = new GeometryType()

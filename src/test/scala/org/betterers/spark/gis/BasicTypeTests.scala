@@ -145,7 +145,7 @@ class BasicTypeTests extends FunSuite {
       "{\"id\":1,\"geo\":" + jsons(1) + "}",
       "{\"id\":2,\"geo\":" + jsons(2) + "}"
     ))
-    val df = jsonRDD(rdd, schema)
+    val df = read.schema(schema).json(rdd)
     assert(df.collect().mkString(",") == "[1,POINT (1 1)],[2,LINESTRING (12 13, 15 20)]")
   }
 

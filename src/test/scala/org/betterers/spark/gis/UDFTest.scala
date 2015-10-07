@@ -71,13 +71,13 @@ class UDFTest extends FunSuite {
       "{\"id\":1,\"geo\":" + jsons(1) + "}",
       "{\"id\":2,\"geo\":" + jsons(2) + "}"
     ))
-    rdd.name = "PROVA"
+    rdd.name = "TEST"
     val sqlContext = new SQLContext(sparkContext)
-    val df = sqlContext.jsonRDD(rdd, schema)
-    df.registerTempTable("PROVA")
+    val df = sqlContext.read.schema(schema).json(rdd)
+    df.registerTempTable("TEST")
     Functions.register(sqlContext)
     assertResult(Array(2,2)) {
-      sqlContext.sql("SELECT ST_CoordDim(geo) FROM PROVA").collect().map(_.get(0))
+      sqlContext.sql("SELECT ST_CoordDim(geo) FROM TEST").collect().map(_.get(0))
     }
   }
 }

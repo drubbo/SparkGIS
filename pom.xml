@@ -4,7 +4,7 @@
     <groupId>org.betterers</groupId>
     <artifactId>spark-gis</artifactId>
     <name>SparkGIS</name>
-    <version>0.1.0</version>
+    <version>0.2.0</version>
     <packaging>jar</packaging>
 
     <properties>
@@ -14,7 +14,6 @@
         <spark.version>1.4.0</spark.version>
         <scala.version>2.10.4</scala.version>
         <scala.binary.version>2.10</scala.binary.version>
-        <log4j.version>1.2.17</log4j.version>
         <esri.geometry.version>1.2.1</esri.geometry.version>
         <org.scalatest.version>2.2.4</org.scalatest.version>
     </properties>
@@ -51,12 +50,6 @@
             <scope>compile</scope>
         </dependency>
         <dependency>
-            <groupId>log4j</groupId>
-            <artifactId>log4j</artifactId>
-            <version>${log4j.version}</version>
-            <scope>compile</scope>
-        </dependency>
-        <dependency>
             <groupId>com.esri.geometry</groupId>
             <artifactId>esri-geometry-api</artifactId>
             <version>${esri.geometry.version}</version>
@@ -77,6 +70,9 @@
                 <configuration>
                     <scalaCompatVersion>${scala.binary.version}</scalaCompatVersion>
                     <scalaVersion>${scala.version}</scalaVersion>
+                    <args>
+                        <arg>-feature</arg>
+                    </args>
                 </configuration>
                 <executions>
                     <execution>
