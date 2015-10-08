@@ -62,6 +62,8 @@ Moreover, they can be registered in the *SQLContext* and used inside *SparkSQL* 
 ## Credits
 The *Geometry* value class is written on top of the [ESRI Geometry](/Esri/geometry-api-java) library.
 
+Conversion between coordinate reference systems is performed using [GeoTools](http://geotools.org/).
+
 UDFs aim to adhere to [OGC Simple Feature Access](http://www.opengeospatial.org/standards/sfs) recommendation.
 When some of them were unavailable from the ESRI library, those have been implemented mimicking [PostGIS](http://postgis.net/docs/manual-2.1/reference.html) behaviour.
 

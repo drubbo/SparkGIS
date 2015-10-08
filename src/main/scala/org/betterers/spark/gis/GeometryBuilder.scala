@@ -26,48 +26,48 @@ object GeometryBuilder {
   /** Creates a [[Polyline]] with a single path from a sequence of coordinate pairs */
   def mkLine(points: Seq[Coordinates]): Polyline = {
     val rt = new Polyline()
-    addLine(closed = false)(rt, points)
+    addLine(rt, points, closed = false)
     rt
   }
 
   /** Creates a [[Polyline]] with multiple paths from a sequence of line points */
   def mkMultiLine(lines: Seq[Seq[Coordinates]]): Polyline = {
     val rt = new Polyline()
-    addLines(closed = false)(rt, lines)
+    addLines(rt, lines, closed = false)
     rt
   }
 
-  /** Creates a [[Polygon]] with a single LinearRing.
+  /** Creates a [[Polygon]] with a single ring.
     *
     * The closing segment is added here, so there's no need to repeat the first point
     * in last position when calling this.
     */
   def mkPolygon(points: Seq[Coordinates]): Polygon = {
     val rt = new Polygon()
-    addLine(closed = true)(rt, points)
+    addLine(rt, points, closed = true)
     rt
   }
 
-  /** Creates a [[Polygon]] with a set of LinearRing.
+  /** Creates a [[Polygon]] with a set of rings.
     *
     * The closing segment is added here, so there's no need to repeat the first point
     * in last position when calling this.
     */
   def mkMultiPolygon(lines: Seq[Seq[Coordinates]]): Polygon = {
     val rt = new Polygon()
-    addLines(closed = true)(rt, lines)
+    addLines(rt, lines, closed = true)
     rt
   }
 
   /** Helper: adds a new path in a [[MultiPath]] defined by a sequence of coordinate pairs */
-  private def addLine[T <: MultiPath](closed: Boolean)(target: T, points: Seq[Coordinates]): Unit = {
+  private def addLine(target: MultiPath, points: Seq[Coordinates], closed: Boolean): Unit = {
     target.startPath(points.head._1, points.head._2)
     points.tail.foreach(p => target.lineTo(p._1, p._2))
     if (closed) target.closePathWithLine()
   }
 
   /** Helper: adds a new paths in a [[MultiPath]] defined by a sequence of sequence of coordinate pairs */
-  private def addLines[T <: MultiPath](closed: Boolean)(target: T, lines: Seq[Seq[Coordinates]]): Unit =
-    lines.foreach(l => addLine(closed)(target, l))
+  private def addLines(target: MultiPath, lines: Seq[Seq[Coordinates]], closed: Boolean): Unit =
+    lines.foreach(l => addLine(target, l, closed))
 
 }

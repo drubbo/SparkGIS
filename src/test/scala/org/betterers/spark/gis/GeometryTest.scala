@@ -20,6 +20,36 @@ class GeometryTest extends FunSuite {
   )
   val coll = Geometry.aggregate(point, line, polygon)
 
+  test("Transform") {
+    import OperationalGeometry._
+    val MonteMario = 26592
+    def round(x: Double): Double =
+      (x * 100000).round / 100000.0
+
+    val turinCenter = Geometry.point(7.684628, 45.071413)
+    val turinCenterMM = turinCenter.transformTo(MonteMario)
+    assertResult("POINT")(turinCenterMM.geometryType)
+    assertResult(Some(4493440.377831126))(turinCenterMM.xMax)
+    assertResult(Some(890996.5508925163))(turinCenterMM.yMax)
+    val turinCenterBack = turinCenterMM.transformTo(Geometry.WGS84)
+    assertResult(Some(7.68463))(turinCenterBack.xMax.map(round))
+    assertResult(Some(45.0714))(turinCenterBack.yMax.map(round))
+
+    val turinArea = Geometry.polygon((7.635404, 45.126668), (7.751662, 45.090807), 
+      (7.694542, 45.007853), (7.545411, 45.043281), (7.565195, 45.103410))
+    val turinAreaMM = turinArea.transformTo(MonteMario)
+    assertResult("POLYGON")(turinAreaMM.geometryType)
+    assertResult(Some(898856.4223355835))(turinAreaMM.yMax)
+    assertResult(Some(4486049.327615481))(turinAreaMM.xMin)
+
+    for(x <- Seq(point, mPoint, line, mLine, polygon, mPoly, coll)) {
+      val t = x.transformTo(MonteMario)
+      assertResult(Geometry.WGS84)(x.srid)
+      assertResult(MonteMario)(t.srid)
+      assertResult(x.geometryType)(t.geometryType)
+    }
+  }
+
   test("Centroid") {
     assertResult(Some(1.0, 2.0))(point.centroid.map(Utils.getCoordinates))
     assertResult(Some(0.6666666666666666, 4.0))(mPoint.centroid.map(Utils.getCoordinates))

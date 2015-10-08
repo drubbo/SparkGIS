@@ -29,6 +29,9 @@ object OperationalGeometry {
     /** Same as [[udf.Functions.ST_SRID]] */
     def SRID = ST_SRID(geom)
 
+    /** Same as [[udf.Functions.ST_Transform]] */
+    def transformTo(targetSRID: Int) = ST_Transform(geom, targetSRID)
+
     /** Same as [[udf.Functions.ST_NPoints]] */
     def numberOfPoints = ST_NPoints(geom)
 

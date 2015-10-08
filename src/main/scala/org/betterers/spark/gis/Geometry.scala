@@ -18,14 +18,12 @@ import scala.collection.JavaConversions
 class Geometry(val srid: Int, private[gis] val geometries: Seq[ESRIGeometry]) extends Serializable {
 
   /** Builds a geometry given an SRID and a single [[ESRIGeometry]] */
-  def this(srid: Int, geom: ESRIGeometry) = {
+  def this(srid: Int, geom: ESRIGeometry) =
     this(srid, Seq(geom))
-  }
 
   /** Builds a geometry with default SRID given a single [[ESRIGeometry]] */
-  def this(geom: ESRIGeometry) = {
+  def this(geom: ESRIGeometry) =
     this(Geometry.WGS84, geom)
-  }
 
   /** [[OGCGeometry]] built from the enclosed [[ESRIGeometry]] */
   @transient
@@ -49,6 +47,9 @@ class Geometry(val srid: Int, private[gis] val geometries: Seq[ESRIGeometry]) ex
   private lazy val allPoints: Seq[Point] =
     geomPoints.flatten
 
+  /** Transforms this geometry coordinates to a different coordinate reference system */
+  def transformTo(targetSRID: Int): Geometry =
+    Transform(this, targetSRID)
 
   /** Returns the centroid of the enclosed geometry
     * @note Geometry collections not supported
@@ -68,11 +69,10 @@ class Geometry(val srid: Int, private[gis] val geometries: Seq[ESRIGeometry]) ex
       new Point(x, y)
     }
     // centroid weighted by length / area
-    def pathCentroid[T <: MultiPath](geom: T, pathIndex: Int, weight: Double): (Point, Double) = {
-      val points = Range(geom.getPathStart(pathIndex), geom.getPathEnd(pathIndex)).map(geom.getPoint)
+    def pathCentroid(geom: MultiPath, pathIndex: Int, weight: Double): (Point, Double) = {
+      val points = Utils.getPoints(geom, pathIndex)
       val x = Utils.avgCoordinate(_.getX, points) * weight
       val y = Utils.avgCoordinate(_.getY, points) * weight
-      println(s"Centroid of $points weight $weight")
       (new Point(x, y), weight)
     }
     // centroid of a single shape
@@ -161,7 +161,7 @@ object Geometry {
   type Coordinates = (Double, Double)
 
   /** Default spatial reference */
-  private val WGS84 = 4326
+  val WGS84 = 4326
 
   /** Builds a geometry from and ESRI [[OGCGeometry]] */
   private[gis]
@@ -176,6 +176,8 @@ object Geometry {
       curToSeq(geom.getEsriGeometryCursor)
     })
   }
+
+  import GeometryBuilder._
 
   /** Builds a geometry from a `JSON REST` string */
   def fromJson(json: String): Geometry =
@@ -199,15 +201,23 @@ object Geometry {
 
   /** Builds a geometry enclosing a [[Point]] */
   def point(srid: Int, xy: Coordinates): Geometry =
-    new Geometry(srid, GeometryBuilder.mkPoint(xy))
+    new Geometry(srid, mkPoint(xy))
 
   /** Builds a geometry enclosing a [[Point]] with default SRID */
   def point(xy: Coordinates): Geometry =
     point(WGS84, xy)
 
+  /** Builds a geometry enclosing a [[Point]] */
+  def point(srid: Int, x: Double, y: Double): Geometry =
+    new Geometry(srid, mkPoint((x, y)))
+
+  /** Builds a geometry enclosing a [[Point]] with default SRID */
+  def point(x: Double, y: Double): Geometry =
+    point(WGS84, x, y)
+
   /** Builds a geometry enclosing a [[MultiPoint]] */
   def multiPoint(srid: Int, points: Coordinates*): Geometry =
-    new Geometry(srid, GeometryBuilder.mkMultiPoint(points))
+    new Geometry(srid, mkMultiPoint(points))
 
   /** Builds a geometry enclosing a [[MultiPoint]] with default SRID */
   def multiPoint(points: Coordinates*): Geometry =
@@ -215,7 +225,7 @@ object Geometry {
 
   /** Builds a geometry enclosing a [[Polyline]] with a single path */
   def line(srid: Int, points: Coordinates*): Geometry =
-    new Geometry(srid, GeometryBuilder.mkLine(points))
+    new Geometry(srid, mkLine(points))
 
   /** Builds a geometry enclosing a [[Polyline]] with a single path and default SRID */
   def line(points: Coordinates*): Geometry =
@@ -223,7 +233,7 @@ object Geometry {
 
   /** Builds a geometry enclosing a [[Polyline]] with multiple paths */
   def multiLine(srid: Int, lines: Seq[Coordinates]*): Geometry =
-    new Geometry(srid, GeometryBuilder.mkMultiLine(lines))
+    new Geometry(srid, mkMultiLine(lines))
 
   /** Builds a geometry enclosing a [[Polyline]] with multiple paths and default SRID */
   def multiLine(lines: Seq[Coordinates]*): Geometry =
@@ -231,7 +241,7 @@ object Geometry {
 
   /** Builds a geometry enclosing a [[Polygon]] with a single ring */
   def polygon(srid: Int, points: Coordinates*): Geometry =
-    new Geometry(srid, GeometryBuilder.mkPolygon(points))
+    new Geometry(srid, mkPolygon(points))
 
   /** Builds a geometry enclosing a [[Polygon]] with a single ring and default SRID */
   def polygon(points: Coordinates*): Geometry =
@@ -239,7 +249,7 @@ object Geometry {
 
   /** Builds a geometry enclosing a [[Polygon]] with multiple rings */
   def multiPolygon(srid: Int, lines: Seq[Coordinates]*): Geometry =
-    new Geometry(srid, GeometryBuilder.mkMultiPolygon(lines))
+    new Geometry(srid, mkMultiPolygon(lines))
 
   /** Builds a geometry enclosing a [[Polygon]] with multiple rings and default SRID */
   def multiPolygon(lines: Seq[Coordinates]*): Geometry =
@@ -257,13 +267,32 @@ object Geometry {
   def collection(geometries: ESRIGeometry*): Geometry =
     collection(WGS84, geometries: _*)
 
-  /** Builds a geometry enclosing a geometry collection */
+  /** Builds a geometry enclosing a geometry collection
+    * combining every [[ESRIGeometry]] enclosed in input arguments.
+    *
+    * Input geometries will be transformed to given coordinate system.
+    */
   def aggregate(srid: Int, geometries: Geometry*): Geometry = {
-    val geoms = geometries.flatMap(_.geometries)
+    val geoms = geometries.map(Transform(_, srid)).flatMap(_.geometries)
     collection(srid, geoms: _*)
   }
 
-  /** Builds a geometry enclosing a geometry collection with default SRID */
-  def aggregate(geometries: Geometry*): Geometry =
-    aggregate(WGS84, geometries: _*)
+  /** Builds a geometry enclosing a geometry collection
+    * combining every [[ESRIGeometry]] enclosed in input arguments.
+    *
+    * Input geometries must share the same SRID; if no geometry is
+    * provided, an empty geometry with default SRID is returned.
+    */
+  def aggregate(geometries: Geometry*): Geometry = {
+    if (geometries.isEmpty)
+      aggregate(WGS84)
+    else {
+      val srids = geometries.map(_.srid)
+      if (srids.distinct.length > 1)
+        throw new IllegalArgumentException("Geometries must be in the same coordinate reference system")
+      else {
+        aggregate(srids.head, geometries: _*)
+      }
+    }
+  }
 }

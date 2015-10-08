@@ -156,6 +156,10 @@ object Functions {
   def ST_SRID(geom: Geometry): Int =
     geom.srid
 
+  /** Returns a new geometry with its coordinates transformed to the SRID referenced by the integer parameter */
+  def ST_Transform(geom: Geometry, targetSRID: Int): Geometry =
+    geom.transformTo(targetSRID)
+
   /** Returns the first point of a `LINESTRING` geometry as a `POINT`;
     * `None` if the input parameter is not a `LINESTRING`
     */
@@ -389,6 +393,7 @@ object Functions {
     ctx.udf.register("ST_NumInteriorRings", ST_NumInteriorRings(_: Geometry))
     ctx.udf.register("ST_NumInteriorRing", ST_NumInteriorRing(_: Geometry))
     ctx.udf.register("ST_SRID", ST_SRID(_: Geometry))
+    ctx.udf.register("ST_Transform", ST_Transform(_: Geometry, _: Int))
     ctx.udf.register("ST_StartPoint", ST_StartPoint(_: Geometry))
     ctx.udf.register("ST_X", ST_X(_: Geometry))
     ctx.udf.register("ST_XMax", ST_XMax(_: Geometry))
