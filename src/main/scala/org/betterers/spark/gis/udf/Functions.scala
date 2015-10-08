@@ -16,9 +16,8 @@ import org.betterers.spark.gis.Geometry
  */
 object Functions {
 
-  /**
-   * @return the closure of the combinatorial boundary of this geometry;
-   *         None if the input parameter is a GEOMETRYCOLLECTION
+  /** Returns the closure of the combinatorial boundary of this geometry,
+    * or `None` if the input parameter is a `GEOMETRYCOLLECTION`
    */
   def ST_Boundary(geom: Geometry): Option[Geometry] =
     geom.ogc match {
@@ -30,17 +29,15 @@ object Functions {
   def ST_CoordDim(geom: Geometry): Int =
     geom.ogc.coordinateDimension()
 
-  /**
-   * @return the inherent dimension of this geometry object,
-   *         which must be less than or equal to the coordinate dimension
-   */
+  /** Returns the inherent dimension of this geometry object,
+    * which must be less than or equal to the coordinate dimension
+    */
   def ST_Dimension(geom: Geometry): Int =
     geom.ogc.dimension()
 
-  /**
-   * @return the last point of a LINESTRING geometry as a POINT;
-   *         None if the input parameter is not a LINESTRING
-   */
+  /** Returns the last point of a `LINESTRING` geometry as a `POINT`;
+    * `None` if the input parameter is not a `LINESTRING`
+    */
   def ST_EndPoint(geom: Geometry): Option[Geometry] =
     geom.ogc match {
       case line: OGCLineString => Some(Geometry(line.endPoint()))
@@ -51,42 +48,39 @@ object Functions {
   def ST_Envelope(geom: Geometry): Geometry =
     Geometry(geom.ogc.envelope())
 
-  /**
-   * @return a line string representing the exterior ring of the POLYGON geometry;
-   *         None if the geometry is not a polygon
-   */
+  /** Returns a line string representing the exterior ring of the `POLYGON` geometry;
+    * `None` if the geometry is not a polygon
+    */
   def ST_ExteriorRing(geom: Geometry): Option[Geometry] =
     geom.ogc match {
       case poly: OGCPolygon => Some(Geometry(poly.exteriorRing()))
       case _ => None
     }
 
-  /**
-   * @return the 1-based Nth geometry if the geometry is a GEOMETRYCOLLECTION, (MULTI)POINT, (MULTI)LINESTRING,
-   *         MULTICURVE or (MULTI)POLYGON;
-   *         None otherwise
-   */
+  /** Returns the 1-based Nth geometry if the geometry is a `GEOMETRYCOLLECTION`,
+    * `POINT`, `MULTIPOINT`, `LINESTRING`, `MULTILINESTRING`, `MULTICURVE`, `POLYGON`
+    * or `MULTIPOLYGON`; `None` otherwise
+    */
   def ST_GeometryN(geom: Geometry, n: Int): Option[Geometry] =
     geom.ogc match {
       case coll: OGCGeometryCollection => Some(Geometry(coll.geometryN(n)))
       case _ => None
     }
 
-  /** Returns the type of the geometry as a string. Eg: 'LINESTRING', 'POLYGON', 'MULTIPOINT', etc. */
+  /** Returns the type of the geometry as a string. Eg: `"LINESTRING"`, `"POLYGON"`, etc. */
   def ST_GeometryType(geom: Geometry): String =
     geom.ogc.geometryType().toUpperCase
 
-  /**
-   * @return the 1-based Nth interior LINESTRING ring of the polygon geometry;
-   *         None if the geometry is not a polygon or the given N is out of range
-   */
+  /** Returns the 1-based Nth interior `LINESTRING` ring of the polygon geometry;
+    * `None` if the geometry is not a polygon or the given N is out of range
+    */
   def ST_InteriorRingN(geom: Geometry, n: Int): Option[Geometry] =
     geom.ogc match {
       case poly: OGCPolygon => Some(Geometry(poly.interiorRingN(n)))
       case _ => None
     }
 
-  /** Returns true if each LINESTRING start and end points in the geometry are coincident */
+  /** Returns true if each `LINESTRING` start and end points in the geometry are coincident */
   def ST_IsClosed(geom: Geometry): Boolean =
     geom.ogc match {
       case line: OGCCurve => line.isClosed
@@ -102,21 +96,20 @@ object Functions {
   def ST_IsEmpty(geom: Geometry): Boolean =
     geom.ogc.isEmpty
 
-  /** Returns true if the LINESTRING geometry is closed and simple */
+  /** Returns true if the `LINESTRING` geometry is closed and simple */
   def ST_IsRing(geom: Geometry): Boolean =
     geom.ogc match {
       case line: OGCCurve => line.isRing
       case _ => false
     }
 
-  /**
-   * @return true if the geometry has no anomalous geometric points,
-   *         such as self intersection or self tangency
-   */
+  /** Returns true if the geometry has no anomalous geometric points,
+    * such as self intersection or self tangency
+    */
   def ST_IsSimple(geom: Geometry): Boolean =
     geom.ogc.isSimple
 
-  /** Returns the M coordinate of the POINT geometry, or None if not available or not a point */
+  /** Returns the M coordinate of the `POINT` geometry, or `None` if not available or not a point */
   def ST_M(geom: Geometry): Option[Double] =
     geom.ogc match {
       case pt: OGCPoint => Some(pt.M)
@@ -145,11 +138,9 @@ object Functions {
   def ST_NRings(geom: Geometry) =
     geom.numberOfRings
 
-  /**
-   * @return if geometry is a GEOMETRYCOLLECTION (or MULTI*), the number of geometries;
-   *         for single geometries, 1;
-   *         None otherwise.
-   */
+  /** Returns the number of geometries for `GEOMETRYCOLLECTION` or `MULTI*` geometries,
+    * 1 for single geometries
+    */
   def ST_NumGeometries(geom: Geometry) =
     geom.numberOfGeometries
 
@@ -157,7 +148,7 @@ object Functions {
   def ST_NumInteriorRings(geom: Geometry): Option[Int] =
     geom.numberOfRings.map(_ - 1)
 
-  /** Alias for [[ST_NumInteriorRings()]] */
+  /** Alias for [[ST_NumInteriorRings]] */
   def ST_NumInteriorRing(geom: Geometry) =
     ST_NumInteriorRings(geom)
 
@@ -165,91 +156,61 @@ object Functions {
   def ST_SRID(geom: Geometry): Int =
     geom.srid
 
-  /**
-   * @return the first point of a LINESTRING geometry as a POINT;
-   *         None if the input parameter is not a LINESTRING
-   */
+  /** Returns the first point of a `LINESTRING` geometry as a `POINT`;
+    * `None` if the input parameter is not a `LINESTRING`
+    */
   def ST_StartPoint(geom: Geometry): Option[Geometry] =
     geom.ogc match {
       case line: OGCLineString => Some(Geometry(line.startPoint()))
       case _ => None
     }
 
-  /**
-   * @return the X coordinate of the POINT geometry;
-   *         None if not available or not a point
-   */
+  /** Returns the X coordinate of the `POINT` geometry or `None` if not available or not a point */
   def ST_X(geom: Geometry): Option[Double] =
     geom.ogc match {
       case pt: OGCPoint => Some(pt.X)
       case _ => None
     }
 
-  /**
-   * @return maximum X coordinate of the geometry;
-   *         None if empty geometry
-   */
+  /** Returns maximum X coordinate of the geometry or `None` if empty geometry */
   def ST_XMax(geom: Geometry): Option[Double] =
     geom.maxCoordinate(_.getX)
 
-  /**
-   * @return minimum X coordinate of the geometry;
-   *         None if empty geometry
-   */
+  /** Returns minimum X coordinate of the geometry or `None` if empty geometry */
   def ST_XMin(geom: Geometry): Option[Double] =
     geom.minCoordinate(_.getX)
 
-  /**
-   * @return the Y coordinate of the POINT geometry;
-   *         None if not available or not a point
-   */
+  /** Returns the Y coordinate of the `POINT` geometry; or `None` if not a point */
   def ST_Y(geom: Geometry): Option[Double] =
     geom.ogc match {
       case pt: OGCPoint => Some(pt.Y)
       case _ => None
     }
 
-  /**
-   * @return maximum Y coordinate of the geometry;
-   *         None if empty geometry
-   */
+  /** Returns maximum Y coordinate of the geometry or `None` if empty geometry */
   def ST_YMax(geom: Geometry): Option[Double] =
     geom.maxCoordinate(_.getY)
 
-  /**
-   * @return minimum Y coordinate of the geometry;
-   *         None if empty geometry
-   */
+  /** Returns minimum Y coordinate of the geometry or `None` if empty geometry */
   def ST_YMin(geom: Geometry): Option[Double] =
     geom.minCoordinate(_.getY)
 
-  /**
-   * @return the Z coordinate of the POINT geometry;
-   *         None if not available or not a point
-   */
+  /** Returns the Z coordinate of the `POINT` geometry or `None` if not a point */
   def ST_Z(geom: Geometry): Option[Double] =
     geom.ogc match {
       case pt: OGCPoint => Some(pt.Z)
       case _ => None
     }
 
-  /**
-   * @return maximum Z coordinate of the geometry;
-   *         None if empty geometry
-   */
+  /** Returns maximum Z coordinate of the geometry or `None` if empty geometry */
   def ST_ZMax(geom: Geometry): Option[Double] =
     geom.maxCoordinate(_.getZ)
 
-  /**
-   * @return minimum Z coordinate of the geometry;
-   *         None if empty geometry
-   */
+  /** Returns minimum Z coordinate of the geometry or `None` if empty geometry */
   def ST_ZMin(geom: Geometry): Option[Double] =
     geom.minCoordinate(_.getZ)
 
-  /**
-   * @return the area of the geometry if it is a POLYGON or MULTIPOLYGON
-   */
+  /** Returns the area of the geometry if it is a `POLYGON` or `MULTIPOLYGON` */
   def ST_Area(geom: Geometry): Option[Double] =
     geom.ogc match {
       case s: OGCSurface => Some(s.area())
@@ -257,9 +218,7 @@ object Functions {
       case _ => None
     }
 
-  /**
-   * @return geometry centroid
-   */
+  /** Returns geometry centroid */
   def ST_Centroid(geom: Geometry): Option[Geometry] =
   // NOTE still not supported by ESRI library
   // NOTE should support also other geometry types
@@ -294,7 +253,7 @@ object Functions {
   def ST_Intersects(geomA: Geometry, geomB: Geometry): Boolean =
     geomA.ogc.intersects(geomB.ogc)
 
-  /** Returns the 2-dimensional length of a LINESTRING or MULTILINESTRING */
+  /** Returns the 2-dimensional length of a `LINESTRING` or `MULTILINESTRING` */
   def ST_Length(geom: Geometry): Option[Double] =
     geom.ogc match {
       case l: OGCCurve => Some(l.length)
@@ -302,14 +261,13 @@ object Functions {
       case _ => None
     }
 
-  /**
-   * @return true if the geometries share space, are of the same dimension,
-   *         but are not completely contained by each other
-   */
+  /** Returns true if the geometries share space, are of the same dimension,
+    * but are not completely contained by each other
+    */
   def ST_Overlaps(geomA: Geometry, geomB: Geometry): Boolean =
     geomA.ogc.overlaps(geomB.ogc)
 
-  /** Returns a POINT guaranteed to lie on the surface */
+  /** Returns a `POINT` guaranteed to lie on the surface */
   def ST_PointOnSurface(geom: Geometry): Option[Geometry] =
     geom.ogc match {
       case s: OGCSurface => Some(Geometry(s.pointOnSurface()))
@@ -361,50 +319,49 @@ object Functions {
   def ST_Union(geomA: Geometry, geomB: Geometry): Geometry =
     Geometry(geomA.ogc.union(geomB.ogc))
 
-  /**
-   * @return true if this geometry A is spatially related to geometry B, by testing for intersections
-   *         as specified by the values in the intersection matrix
-   */
+  /** Returns true if geometry A is spatially related to geometry B, by testing for intersections
+    * as specified by the values in the intersection matrix
+    */
   def ST_Relate(geomA: Geometry, geomB: Geometry, matrix: String): Boolean =
     geomA.ogc.relate(geomB.ogc, matrix)
 
-  /** Returns the WKB representation of a geometry */
+  /** Returns the `WKB` representation of a geometry */
   def ST_AsBinary(geom: Geometry): Array[Byte] =
     geom.toBinary
 
-  /** Returns the WKB representation of a geometry */
+  /** Returns the `WKB` representation of a geometry */
   def ST_AsEWKB(geom: Geometry): Array[Byte] =
     geom.toBinary
 
-  /** Returns a geometry decoded from the input WKB */
+  /** Returns a geometry decoded from the input `WKB` */
   def ST_GeomFromBinary(wkb: Array[Byte]): Geometry =
     Geometry.fromBinary(wkb)
 
-  /** Returns a geometry decoded from the input WKB */
+  /** Returns a geometry decoded from the input `WKB` */
   def ST_GeomFromEWKB(wkb: Array[Byte]): Geometry =
     Geometry.fromBinary(wkb)
 
-  /** Returns the WKT representation of a geometry */
+  /** Returns the `WKT` representation of a geometry */
   def ST_AsText(geom: Geometry): String =
     geom.toString
 
-  /** Returns the WKT representation of a geometry */
+  /** Returns the `WKT` representation of a geometry */
   def ST_AsEWKT(geom: Geometry): String =
     geom.toString
 
-  /** Returns a geometry decoded from the input WKT */
+  /** Returns a geometry decoded from the input `WKT` */
   def ST_GeomFromText(wkt: String): Geometry =
     Geometry.fromString(wkt)
 
-  /** Returns a geometry decoded from the input WKT */
+  /** Returns a geometry decoded from the input `WKT` */
   def ST_GeomFromEWKT(wkt: String): Geometry =
     Geometry.fromString(wkt)
 
-  /** Returns the GeoJSON representation of a geometry */
+  /** Returns the `GeoJSON` representation of a geometry */
   def ST_AsGeoJSON(geom: Geometry): String =
     geom.toGeoJson
 
-  /** Returns a geometry decoded from the input GeoJSON */
+  /** Returns a geometry decoded from the input `GeoJSON` */
   def ST_GeomFromGeoJSON(json: String): Geometry =
     Geometry.fromGeoJson(json)
 

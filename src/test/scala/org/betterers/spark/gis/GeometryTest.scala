@@ -75,5 +75,12 @@ class GeometryTest extends FunSuite {
     assertResult(Some(4.0))(coll.maxCoordinate(_.getX))
     assertResult(Some(5.0))(coll.maxCoordinate(_.getY))
   }
+
+  test("Implicit conversion") {
+    import OperationalGeometry._
+
+    val g = Geometry.line((10.0,10.0), (20.0,20.0), (10.0,30.0))
+    assertResult(false)(g.isClosed)
+  }
 }
 

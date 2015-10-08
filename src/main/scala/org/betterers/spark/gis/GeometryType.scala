@@ -11,11 +11,12 @@ import scala.language.postfixOps
 import scala.util.Try
 
 /** User defined type for [[Geometry]] instances
- *
- * @author Ubik <emiliano.leporati@gmail.com>
- */
+  *
+  * @author Ubik <emiliano.leporati@gmail.com>
+  */
 class GeometryType extends UserDefinedType[Geometry] with Logging {
 
+  /** [[Geometry]] values are serialized as strings */
   override def sqlType: DataType = StringType
 
   override def userClass: Class[Geometry] = classOf[Geometry]
@@ -30,10 +31,9 @@ class GeometryType extends UserDefinedType[Geometry] with Logging {
     }
   }
 
-  /**
-   * Translates a [[Geometry]], a [[String]] containing a GeoJSON, or a [[Map]] obtained
-   * during JSON deserialization to a [[Geometry]]
-   */
+  /** Translates a [[Geometry]], a [[String]] containing a GeoJSON, or a [[Map]] obtained
+    * during JSON deserialization to a [[Geometry]]
+    */
   override def deserialize(datum: Any): Geometry = {
     datum match {
       case g: Geometry => g
@@ -90,6 +90,7 @@ class GeometryType extends UserDefinedType[Geometry] with Logging {
 /** Default [[GeometryType]] instance */
 object GeometryType {
 
+  /** [[GeometryType]] instance to be used in schemas */
   val Instance = new GeometryType()
 
 }

@@ -41,6 +41,6 @@ object Utils {
   }
 
   /** Returns coordinates of a [[Point]] as a pair */
-  def getCoordinates(p: Point): (Double, Double) =
+  def getCoordinates(p: Point): Geometry.Coordinates =
     (p.getX, p.getY)
 }
