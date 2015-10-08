@@ -59,6 +59,15 @@ Moreover, they can be registered in the *SQLContext* and used inside *SparkSQL* 
   result = sqlContext.sql("SELECT ST_Length(geo) FROM features")
 ```
 
+## Build, test and doc
+The project uses Maven as build system, so you should be comfortable with it. If not, install Maven 3, cd in your SparkGIS directory and
+```
+  mvn package -DskipTests
+  mvn test
+  mvn scala:doc
+```
+You'll find the jar under the *target* directory, have run all available tests, and generated the documentation under *target/site/scaladocs*.
+
 ## Credits
 The *Geometry* value class is written on top of the [ESRI Geometry](/Esri/geometry-api-java) library.
 
