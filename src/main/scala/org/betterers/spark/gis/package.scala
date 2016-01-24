@@ -21,6 +21,8 @@ package org.betterers.spark
  * GIS extensions for SparkSQL
  */
 package object gis {
-  type ESRIGeometry = com.esri.core.geometry.Geometry
+
+  /** Type for coordinates pair */
+  type Coordinate = (Double, Double)
 }
 

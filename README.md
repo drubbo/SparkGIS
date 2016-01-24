@@ -7,15 +7,20 @@ SparkGIS adds GIS functionalities to [SparkSQL](https://github.com/apache/spark/
 ## Creating Geometry values
 To create values, use factory methods in the *Geometry* object:
 ```
-	val pt = Geometry.point(12.5, 14.6)
-	val ln = Geometry.line((0,0), (20,50))
-	val collection = Geometry.aggregate(pt, ln)
+  import Geometry.WGS84
+  val pt = Geometry.point(12.5, 14.6)
+  val ln = Geometry.line((0,0), (20,50))
+  val collection = Geometry.collection(pt, ln)
 ```
+Each factory method has two argument lists:
+* the first one is the set of 2D coordinates describing the geometry (one, many, many sequences, depending
+on the geometry type)
+* the second one is the coordinate reference system id; an implicit value *Geometry.WGS84* is provided for this
 
 You can also create Geometry values from *WKB* (Well Known Binary), *WKT* (Well Known Text), and *GeoJSON* formats:
 ```
-	val mp = Geometry.fromString("MULTIPOINT ((1 1), (2 2))")
-    val ml = Geometry.fromGeoJSON("{\"type\":\"MultiLineString\",\"coordinates\":[[[12,13],[15,20]],[[7,9],[11,17]]]}}")
+  val mp = Geometry.fromString("MULTIPOINT ((1 1), (2 2))")
+  val ml = Geometry.fromGeoJSON("{\"type\":\"MultiLineString\",\"coordinates\":[[[12,13],[15,20]],[[7,9],[11,17]]]}}")
 ```
 
 ## Defining table schemas
@@ -59,22 +64,61 @@ Moreover, they can be registered in the *SQLContext* and used inside *SparkSQL* 
   result = sqlContext.sql("SELECT ST_Length(geo) FROM features")
 ```
 
+## Using geometry methods
+GIS functions are just aliasing methods from the class hierarchy rooting at *GisGeometry*.
+*GisGeometry* hierarchy wraps *GeoTools* classes to provide a consistent interface - like returning
+options instead of magic values or to model the absence of some property for some geometry type.
+
+An instance of *GisGeometry* is wrapped by the SparkSQL *Geometry* type; the easiest way to access it
+and invoke its methods is by importing *Geometry.ImplicitConversions*:
+```
+  import Geometry.ImplicitConversions._
+
+  val l = Geometry.line((10.0,10.0), ...)
+  if (!l.isEmpty) {
+    val p: Option[Geometry] = l.startPoint
+    ....
+  }
+```
+
+Some method is also aliased as operator by *GeometryOperators* implicit class:
+```
+  import GeometryOperators._
+  import Geometry.ImplicitConversions._
+
+  val l1 = Geometry.line((10.0,10.0), (20.0,20.0), (10.0,30.0))
+  val l2 = Geometry.line((20.0,20.0), (30.0,30.0), (40.0,40.0))
+  if ((l1 <-> l2) < 50.0) { // distance less than 50
+    ...
+  }
+
+```
+
 ## Build, test and doc
-The project uses Maven as build system, so you should be comfortable with it. If not, install Maven 3, cd in your SparkGIS directory and
+The project uses Maven as build system, so you should be comfortable with it.
+If not, install Maven 3, cd in your SparkGIS directory and
 ```
   mvn package -DskipTests
   mvn test
   mvn scala:doc
 ```
-You'll find the jar under the *target* directory, have run all available tests, and generated the documentation under *target/site/scaladocs*.
+You'll find the jar under the *target* directory, have run all available tests,
+and generated the documentation under *target/site/scaladocs*.
 
 ## Credits
-The *Geometry* value class is written on top of the [ESRI Geometry](/Esri/geometry-api-java) library.
-
-Conversion between coordinate reference systems is performed using [GeoTools](http://geotools.org/).
+The *Geometry* value class is written on top of the [GeoTools](http://geotools.org/) library.
 
 UDFs aim to adhere to [OGC Simple Feature Access](http://www.opengeospatial.org/standards/sfs) recommendation.
-When some of them were unavailable from the ESRI library, those have been implemented mimicking [PostGIS](http://postgis.net/docs/manual-2.1/reference.html) behaviour.
+Name and documentation of GIS functions have been copied from [PostGIS](http://postgis.net/docs/manual-2.1/reference.html).
 
 ## Remarks
-In order to work within jsonRDDs, Spark 1.4 is needed.
+In order to work within jsonRDDs, Spark >= 1.4 is needed.
+
+## Changelog
+### 0.3.0
+* Abandoned [ESRI Geometry](/Esri/geometry-api-java) library in favor of [GeoTools](http://geotools.org/)
+* Moved to Scala 2.11
+* Moved to Spark 1.6
+* Added *ST_Perimeter*
+* Added tolerance argument to *ST_Simplify*
+* SRID in factory methods is now an implicit argument

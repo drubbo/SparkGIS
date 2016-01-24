@@ -5,6 +5,7 @@ import java.nio.ByteBuffer
 
 import org.apache.spark.Logging
 import org.apache.spark.sql.types._
+import org.apache.spark.unsafe.types.UTF8String
 import org.codehaus.jackson.JsonFactory
 
 import scala.language.postfixOps
@@ -25,7 +26,7 @@ class GeometryType extends UserDefinedType[Geometry] with Logging {
   override def serialize(obj: Any): String = {
     obj match {
       case g: Geometry =>
-        g.toGeoJson
+        g.impl.toGeoJson
       case _ =>
         throw new IllegalArgumentException(s"Invalid Geometry value to serialize: $obj")
     }
@@ -38,19 +39,15 @@ class GeometryType extends UserDefinedType[Geometry] with Logging {
     datum match {
       case g: Geometry => g
 
-      case s: UTF8String => deserialize(s.toString())
-
       case b: Array[Byte] => Geometry.fromBinary(b)
       case b: ByteBuffer => Geometry.fromBinary(b)
 
+      case s: UTF8String => deserialize(s.toString)
       case s: String =>
         Try {
           Geometry.fromGeoJson(s)
         } orElse {
           logWarning("Not a GeoJSON")
-          Try(Geometry.fromJson(s))
-        } orElse {
-          logWarning("Not a REST JSON")
           Try(Geometry.fromString(s))
         } get
 

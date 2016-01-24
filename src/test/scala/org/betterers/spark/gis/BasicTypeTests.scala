@@ -1,14 +1,17 @@
 package org.betterers.spark.gis
 
-import org.apache.spark.sql.test.TestSQLContext._
+import org.apache.spark.{SparkConf, SparkContext}
 import org.apache.spark.sql.types.{IntegerType, StructField, StructType}
-import org.apache.spark.sql.{Row, SQLContext}
-import org.scalatest.FunSuite
+import org.apache.spark.sql.{SQLContext, Row}
+import org.scalatest.{BeforeAndAfter, FunSuite}
 
 /**
  * Basic tests for GIS UDTs
  */
-class BasicTypeTests extends FunSuite {
+class BasicTypeTests extends FunSuite with BeforeAndAfter {
+
+  import Geometry.WGS84
+
   val schema = StructType(Seq(
     StructField("id", IntegerType),
     StructField("geo", GeometryType.Instance)
@@ -18,6 +21,18 @@ class BasicTypeTests extends FunSuite {
     (2, "{\"type\":\"LineString\",\"coordinates\":[[12,13],[15,20]]}"),
     (3, "{\"type\":\"MultiLineString\",\"coordinates\":[[[12,13],[15,20]],[[7,9],[11,17]]]}")
   )
+
+  var sc: SparkContext = _
+  var sql: SQLContext = _
+
+  before {
+    sc = new SparkContext(new SparkConf().setMaster("local[4]").setAppName("SparkGIS"))
+    sql = new SQLContext(sc)
+  }
+
+  after {
+    sc.stop()
+  }
 
   test("Factory methods") {
     val point = Geometry.point((1.0, 1.0))
@@ -41,7 +56,7 @@ class BasicTypeTests extends FunSuite {
     }
 
     val polygon = Geometry.polygon((1.0, 1.0), (2.0, 2.0), (3.0, 1.0), (2.0, 0.0))
-    assertResult("POLYGON ((1 1, 2 0, 3 1, 2 2, 1 1))") {
+    assertResult("POLYGON ((1 1, 2 2, 3 1, 2 0, 1 1))") {
       polygon.toString
     }
 
@@ -49,12 +64,12 @@ class BasicTypeTests extends FunSuite {
       Seq((1.0, 1.0), (1.0, 2.0), (2.0, 2.0), (2.0, 1.0)),
       Seq((1.25, 1.25), (1.25, 1.75), (1.75, 1.75), (1.75, 1.25))
     )
-    assertResult("MULTIPOLYGON (((1 1, 2 1, 2 2, 1 2, 1 1)), ((1.25 1.25, 1.75 1.25, 1.75 1.75, 1.25 1.75, 1.25 1.25)))") {
+    assertResult("MULTIPOLYGON (((1 1, 1 2, 2 2, 2 1, 1 1)), ((1.25 1.25, 1.25 1.75, 1.75 1.75, 1.75 1.25, 1.25 1.25)))") {
       mPoly.toString
     }
 
-    val coll = Geometry.aggregate(point, line, polygon)
-    assertResult("GEOMETRYCOLLECTION (POINT (1 1), LINESTRING (1 1, 2 2, 3 3, 4 4), POLYGON ((1 1, 2 0, 3 1, 2 2, 1 1)))") {
+    val coll = Geometry.collection(point, line, polygon)
+    assertResult("GEOMETRYCOLLECTION (POINT (1 1), LINESTRING (1 1, 2 2, 3 3, 4 4), POLYGON ((1 1, 2 2, 3 1, 2 0, 1 1)))") {
       coll.toString
     }
   }
@@ -72,27 +87,20 @@ class BasicTypeTests extends FunSuite {
   }
 
   test("To JSON") {
+    import Geometry.ImplicitConversions._
+
     val point = Geometry.point((1.0, 1.0))
-    assertResult("{\"x\":1,\"y\":1,\"spatialReference\":{\"wkid\":4326}}") {
-      point.toJson
-    }
-    assertResult("{\"type\":\"Point\",\"coordinates\":[1.0,1.0]}") {
+    assertResult("{\"type\":\"Point\",\"coordinates\":[1,1]}") {
       point.toGeoJson
     }
 
     val line = Geometry.line((1.0, 1.0), (2.0, 2.0))
-    assertResult("{\"paths\":[[[1,1],[2,2]]],\"spatialReference\":{\"wkid\":4326}}") {
-      line.toJson
-    }
-    assertResult("{\"type\":\"LineString\",\"coordinates\":[[1.0,1.0],[2.0,2.0]]}") {
+    assertResult("{\"type\":\"LineString\",\"coordinates\":[[1,1],[2,2]]}") {
       line.toGeoJson
     }
 
     val polygon = Geometry.polygon((1.0, 1.0), (2.0, 2.0), (3.0, 1.0), (2.0, 0.0))
-    assertResult("{\"rings\":[[[1,1],[2,2],[3,1],[2,0],[1,1]]],\"spatialReference\":{\"wkid\":4326}}") {
-      polygon.toJson
-    }
-    assertResult("{\"type\":\"Polygon\",\"coordinates\":[[[1.0,1.0],[2.0,2.0],[3.0,1.0],[2.0,0.0],[1.0,1.0]]]}") {
+    assertResult("{\"type\":\"Polygon\",\"coordinates\":[[[1,1],[2,2],[3,1],[2,0.0],[1,1]]]}") {
       polygon.toGeoJson
     }
 
@@ -100,52 +108,28 @@ class BasicTypeTests extends FunSuite {
       Seq((1.0, 1.0), (1.0, 2.0), (2.0, 2.0), (2.0, 1.0)),
       Seq((1.25, 1.25), (1.25, 1.75), (1.75, 1.75), (1.75, 1.25))
     )
-    assertResult("{\"rings\":[[[1,1],[1,2],[2,2],[2,1],[1,1]],[[1.25,1.25],[1.25,1.75],[1.75,1.75],[1.75,1.25],[1.25,1.25]]],\"spatialReference\":{\"wkid\":4326}}") {
-      mPoly.toJson
-    }
-    assertResult("{\"type\":\"MultiPolygon\",\"coordinates\":[[[[1.0,1.0],[1.0,2.0],[2.0,2.0],[2.0,1.0],[1.0,1.0]]],[[[1.25,1.25],[1.25,1.75],[1.75,1.75],[1.75,1.25],[1.25,1.25]]]]}") {
+    assertResult("{\"type\":\"MultiPolygon\",\"coordinates\":[[[[1,1],[1,2],[2,2],[2,1],[1,1]]],[[[1.25,1.25],[1.25,1.75],[1.75,1.75],[1.75,1.25],[1.25,1.25]]]]}") {
       mPoly.toGeoJson
     }
 
-    // TODO this is something buggy in the library. There seem to be no tests for this.
-    /* This is how a geometry collection should appear
-      { "type": "GeometryCollection",
-          "geometries": [
-            { "type": "Point",
-              "coordinates": [100.0, 0.0]
-              },
-            { "type": "LineString",
-              "coordinates": [ [101.0, 0.0], [102.0, 1.0] ]
-              }
-          ]
-        }
-     */
-    val coll = Geometry.aggregate(point, line, polygon)
-    intercept[UnsupportedOperationException] {
-      // NOTE not sure what this sould return
-      coll.toJson
-    }
-    intercept[NullPointerException] {
-      // FIXME update test when new version of ESRI lib available
+    val coll = Geometry.collection(point, line, polygon)
+    assertResult("{\"type\":\"GeometryCollection\",\"geometries\":[{\"type\":\"Point\",\"coordinates\":[1,1]},{\"type\":\"LineString\",\"coordinates\":[[1,1],[2,2]]},{\"type\":\"Polygon\",\"coordinates\":[[[1,1],[2,2],[3,1],[2,0.0],[1,1]]]}]}") {
       coll.toGeoJson
     }
   }
 
   test("Deserialize") {
     val p1 = GeometryType.Instance.deserialize("POINT (1 1)")
-    val p2 = GeometryType.Instance.deserialize("{\"x\":1,\"y\":1,\"spatialReference\":{\"wkid\":4326}}")
-    val p3 = GeometryType.Instance.deserialize("{\"type\":\"Point\",\"coordinates\":[1.0,1.0]}")
+    val p2 = GeometryType.Instance.deserialize("{\"type\":\"Point\",\"coordinates\":[1.0,1.0]}")
     assert(p1 == p2)
-    assert(p1 == p3)
-    assert(p2 == p3)
   }
 
   test("Load JSON RDD with explicit schema") {
-    val rdd = sparkContext.parallelize(Seq(
+    val rdd = sc.parallelize(Seq(
       "{\"id\":1,\"geo\":" + jsons(1) + "}",
       "{\"id\":2,\"geo\":" + jsons(2) + "}"
     ))
-    val df = read.schema(schema).json(rdd)
+    val df = sql.read.schema(schema).json(rdd)
     assert(df.collect().mkString(",") == "[1,POINT (1 1)],[2,LINESTRING (12 13, 15 20)]")
   }
 
@@ -154,8 +138,8 @@ class BasicTypeTests extends FunSuite {
       Row(1, Geometry.fromGeoJson(jsons(1))),
       Row(2, Geometry.fromGeoJson(jsons(2)))
     )
-    val rdd = sparkContext.parallelize(data)
-    val df = createDataFrame(rdd, schema)
+    val rdd = sc.parallelize(data)
+    val df = sql.createDataFrame(rdd, schema)
     assert(df.collect().mkString(",") == "[1,POINT (1 1)],[2,LINESTRING (12 13, 15 20)]")
   }
 }
