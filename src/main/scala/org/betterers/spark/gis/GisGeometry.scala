@@ -23,7 +23,8 @@ class GisGeometry(val geom: Geom, private val _srid: Option[Int] = None)
   _srid.foreach(geom.setSRID)
 
   /** Utility to return None if the wrapped geometry is empty, or something otherwise */
-  protected def orElse[R](ifNotEmpty: => R): Option[R] =
+  protected[gis]
+  def orElse[R](ifNotEmpty: => R): Option[R] =
     if (geom.isEmpty) None
     else Option(ifNotEmpty)
 
@@ -44,7 +45,8 @@ class GisGeometry(val geom: Geom, private val _srid: Option[Int] = None)
   final def numPoints: Int = geom.getNumPoints
 
   @transient
-  private lazy val allCoordinates =
+  private[gis] 
+  lazy val allCoordinates =
     (0 until numPoints).map(i => geom.getCoordinates.apply(i))
 
   /** Returns a coordinate of the enclosed geometries satisfying some predicate
@@ -292,9 +294,10 @@ class GisPolygon(val poly: Polygon, _srid: Option[Int] = None)
 
   /** Returns every ring in this polygon */
   def rings =
-    ((0 until poly.getNumInteriorRing).
-      map(poly.getInteriorRingN) :+ poly.getExteriorRing).
-      map(GisGeometry.apply(_))
+    (poly.getExteriorRing +:
+      (0 until poly.getNumInteriorRing).
+      map(poly.getInteriorRingN)).
+      map(GisLineString.apply(_))
 
   override def exteriorRing: Option[GisGeometry] = Option(poly.getExteriorRing)
 
@@ -374,6 +377,10 @@ object GisGeometry {
     case _ => throw new IllegalArgumentException("Unknown geometry type: " + gt.getGeometryType)
   }
 
+  /** Extracts sub geometries of a [[GisGeometryCollection]] */
+  def unapply(c: GisGeometryCollection): Option[Seq[GisGeometry]] =
+    c.orElse(c.subGeometries)
+
   private[gis]
   object ImplicitConversions {
 
@@ -388,7 +395,6 @@ object GisGeometry {
     /** Builds a [[GisGeometry]] from a GeoTools one */
     implicit def fromGeom(geom: Geom): GisGeometry =
       GisGeometry.apply(geom)
-
   }
 }
 
@@ -398,13 +404,13 @@ object GisPoint {
   def apply(p: Point, srid: Option[Int] = None): GisPoint =
     new GisPoint(p, srid)
 
-  def unapply(g: GisGeometry): Option[GisPoint] = g match {
+  def unapply(g: Geometry): Option[GisPoint] = g.impl match {
     case p: GisPoint => Some(p)
     case _ => None
   }
 
-  def unapply(g: Geometry): Option[GisPoint] =
-    unapply(g.impl)
+  def unapply(mp: GisMultiPoint): Option[Seq[GisPoint]] =
+    mp.orElse(mp.subGeometries[GisPoint])
 }
 
 /** Factory method and extractors for [[GisLineString]] */
@@ -413,13 +419,13 @@ object GisLineString {
   def apply(p: LineString, srid: Option[Int] = None): GisLineString =
     new GisLineString(p, srid)
 
-  def unapply(g: GisGeometry): Option[GisLineString] = g match {
+  def unapply(g: Geometry): Option[GisLineString] = g.impl match {
     case p: GisLineString => Some(p)
     case _ => None
   }
 
-  def unapply(g: Geometry): Option[GisLineString] =
-    unapply(g.impl)
+  def unapply(ml: GisMultiLineString): Option[Seq[GisLineString]] =
+    ml.orElse(ml.subGeometries[GisLineString])
 }
 
 /** Factory method and extractors for [[GisPolygon]] */
@@ -428,13 +434,13 @@ object GisPolygon {
   def apply(p: Polygon, srid: Option[Int] = None): GisPolygon =
     new GisPolygon(p, srid)
 
-  def unapply(g: GisGeometry): Option[GisPolygon] = g match {
+  def unapply(g: Geometry): Option[GisPolygon] = g.impl match {
     case p: GisPolygon => Some(p)
     case _ => None
   }
 
-  def unapply(g: Geometry): Option[GisPolygon] =
-    unapply(g.impl)
+  def unapply(mp: GisMultiPolygon): Option[Seq[GisPolygon]] =
+    mp.orElse(mp.subGeometries[GisPolygon])
 }
 
 /** Factory method and extractors for [[GisGeometryCollection]] */
@@ -443,13 +449,10 @@ object GisGeometryCollection {
   def apply(p: GeometryCollection, srid: Option[Int] = None): GisGeometryCollection =
     new GisGeometryCollection(p, srid)
 
-  def unapply(g: GisGeometry): Option[GisGeometryCollection] = g match {
+  def unapply(g: Geometry): Option[GisGeometryCollection] = g.impl match {
     case p: GisGeometryCollection => Some(p)
     case _ => None
   }
-
-  def unapply(g: Geometry): Option[GisGeometryCollection] =
-    unapply(g.impl)
 }
 
 /** Factory method and extractors for [[GisMultiPoint]] */
@@ -458,12 +461,11 @@ object GisMultiPoint {
   def apply(p: MultiPoint, srid: Option[Int] = None): GisMultiPoint =
     new GisMultiPoint(p, srid)
 
-  def unapply(g: GisGeometry): Option[GisMultiPoint] = g match {
+  def unapply(g: Geometry): Option[GisMultiPoint] = g.impl match {
     case p: GisMultiPoint => Some(p)
     case _ => None
   }
 
-  def unapply(g: Geometry): Option[GisMultiPoint] = unapply(g.impl)
 }
 
 
@@ -473,13 +475,10 @@ object GisMultiLineString {
   def apply(p: MultiLineString, srid: Option[Int] = None): GisMultiLineString =
     new GisMultiLineString(p, srid)
 
-  def unapply(g: GisGeometry): Option[GisMultiLineString] = g match {
+  def unapply(g: Geometry): Option[GisMultiLineString] = g.impl match {
     case p: GisMultiLineString => Some(p)
     case _ => None
   }
-
-  def unapply(g: Geometry): Option[GisMultiLineString] =
-    unapply(g.impl)
 }
 
 /** Factory method and extractors for [[GisMultiPolygon]] */
@@ -488,11 +487,34 @@ object GisMultiPolygon {
   def apply(p: MultiPolygon, srid: Option[Int] = None): GisMultiPolygon =
     new GisMultiPolygon(p, srid)
 
-  def unapply(g: GisGeometry): Option[GisMultiPolygon] = g match {
+  def unapply(g: Geometry): Option[GisMultiPolygon] = g.impl match {
     case p: GisMultiPolygon => Some(p)
     case _ => None
   }
+}
 
-  def unapply(g: Geometry): Option[GisMultiPolygon] =
-    unapply(g.impl)
+/** Extractors to get [[Coordinate]] (or sequences of) from [[GisGeometry]] instances */
+object Coordinate {
+
+  private def toCoordinate(c: Coord): Coordinate =
+    (c.x, c.y)
+
+  def unapply(p: GisPoint): Option[Coordinate] =
+    p.orElse((p.x.get, p.y.get))
+
+  def unapply(l: GisLineString): Option[Seq[Coordinate]] =
+    l.orElse(l.allCoordinates.map(toCoordinate))
+
+  def unapply(p: GisPolygon): Option[Seq[Seq[Coordinate]]] =
+    p.orElse(p.rings.map(unapply).flatten)
+
+  def unapply(mp: GisMultiPoint): Option[Seq[Coordinate]] =
+    mp.orElse(mp.allCoordinates.map(toCoordinate))
+
+  def unapply(ml: GisMultiLineString): Option[Seq[Seq[Coordinate]]] =
+    ml.orElse(ml.subGeometries[GisLineString].map(unapply).flatten)
+
+  def unapply(mp: GisMultiPolygon): Option[Seq[Seq[Seq[Coordinate]]]] =
+    mp.orElse(mp.subGeometries[GisPolygon].map(unapply).flatten)
+
 }

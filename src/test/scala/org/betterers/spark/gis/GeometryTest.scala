@@ -121,45 +121,67 @@ class GeometryTest extends FunSuite {
   }
 
   test("Pattern matching") {
+    def sum(c: Coordinate*): Double =
+      c.foldLeft(0.0) { case (acc, (x, y)) => acc + x + y }
+
     assertResult(true)(point match {
       case GisPoint(p) => true
-      case _ => false
     })
+    assertResult(3.0)(point match {
+      case GisPoint(Coordinate(x, y)) => x + y
+    })
+
     assertResult(true)(mPoint match {
       case GisMultiPoint(p) => true
-      case _ => false
+    })
+    assertResult(14.0)(mPoint match {
+      case GisMultiPoint(Coordinate(a +: b +: c +: Nil)) => sum(a, b, c)
     })
     assertResult(true)(mPoint match {
       case GisGeometryCollection(p) => true
-      case _ => false
     })
+
     assertResult(true)(line match {
       case GisLineString(p) => true
-      case _ => false
     })
+    assertResult(15.0)(line match {
+      case GisLineString(Coordinate(a +: b +: c +: d +: Nil)) => sum(a, b, c, d)
+    })
+
     assertResult(true)(mLine match {
       case GisMultiLineString(p) => true
-      case _ => false
     })
     assertResult(true)(mLine match {
       case GisGeometryCollection(p) => true
-      case _ => false
     })
+    assertResult((3, 60.0))(mLine match {
+      case GisMultiLineString(Coordinate(l1 +: (a +: b +: Nil) +: Nil)) =>
+        (l1.length, sum(a, b))
+    })
+
     assertResult(true)(polygon match {
       case GisPolygon(p) => true
-      case _ => false
     })
+    assertResult(5)(polygon match {
+      case GisPolygon(Coordinate(r1 +: Nil)) => r1.length
+    })
+
     assertResult(true)(mPoly match {
       case GisMultiPolygon(p) => true
-      case _ => false
+    })
+    assertResult((14.0, 5))(mPoly match {
+      case GisMultiPolygon(Coordinate((r1p1 +: Nil) +: (r1p2 +: Nil) +: Nil)) =>
+        (sum(r1p1: _*), r1p2.length)
     })
     assertResult(true)(mPoly match {
       case GisGeometryCollection(p) => true
-      case _ => false
     })
+
     assertResult(true)(coll match {
       case GisGeometryCollection(p) => true
-      case _ => false
+    })
+    assertResult(true)(coll match {
+      case GisGeometryCollection(GisGeometry((_: GisPoint) +: (_: GisLineString) +: (_: GisPolygon) +: Nil)) => true
     })
   }
 }
